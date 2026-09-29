@@ -9,7 +9,7 @@
 
 # ZeroPulse PR Review Agent (PulseReview)
 
-**[⬇ Download for Windows (v0.1.1 beta)](https://github.com/steventa2024-lgtm/Pulse-Review/releases/latest)** ·
+**[⬇ Download for Windows (v0.1.1 beta)](https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/v0.1.1beta/ZeroPulsePRReview.exe)** ·
 [Releases](https://github.com/steventa2024-lgtm/Pulse-Review/releases) · Showcase website source: [`website/`](website/)
 
 A local desktop companion for GitHub developers: sign in with GitHub, choose an open-weight model, pick a repository and pull request, and

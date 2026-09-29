@@ -49,3 +49,8 @@ python <repo>/website/scripts/capture_screenshots.py http://127.0.0.1:8790
 
 `demo_app.py` runs the real dashboard code; only GitHub and the model are replaced by offline sample data.
 You can also replace any file with your own screenshot of the same name.
+
+## Deploy to Vercel
+
+Vercel → **Add New… → Project** → import `steventa2024-lgtm/Pulse-Review` → set **Root Directory** to `website` → **Deploy**.
+`website/vercel.json` already sets the build (`npm run build`) and output (`dist`). No environment variables or secrets are needed.
