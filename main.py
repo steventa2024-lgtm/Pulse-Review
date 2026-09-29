@@ -1,4 +1,4 @@
-"""ZeroPulse PR Review Agent — desktop entry point.  Run from source with:  python main.py"""
+"""PulseReview — desktop entry point.  Run from source with:  python main.py"""
 from __future__ import annotations
 
 import multiprocessing
@@ -61,7 +61,7 @@ def _notify_fallback(reason: str) -> None:
     if getattr(sys, "frozen", False) and sys.platform == "win32":
         try:
             import ctypes
-            ctypes.windll.user32.MessageBoxW(0, reason, "ZeroPulse PR Review Agent", 0x40)  # type: ignore[attr-defined]
+            ctypes.windll.user32.MessageBoxW(0, reason, "PulseReview", 0x40)  # type: ignore[attr-defined]
         except Exception:  # noqa: BLE001
             pass
     else:
@@ -71,7 +71,7 @@ def _notify_fallback(reason: str) -> None:
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
-    ap = argparse.ArgumentParser(description="ZeroPulse PR Review Agent desktop app")
+    ap = argparse.ArgumentParser(description="PulseReview desktop app")
     ap.add_argument("--browser", action="store_true", help="run in the default browser instead of a native window")
     ap.add_argument("--port", type=int, default=0, help="local port (default: a free port on 127.0.0.1)")
     # NiceGUI's native mode re-imports this module in a child process: do no heavy work there.

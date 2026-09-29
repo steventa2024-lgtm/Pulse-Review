@@ -27,7 +27,7 @@ export function Hero({ release, onZoom }: { release: ReleaseInfo; onZoom: (file:
           <Button href={REPO_URL} variant="secondary" external className="w-full sm:w-auto h-12 px-6"><GitHubIcon /> View on GitHub</Button>
         </div>
         <ul className="enter mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-muted" style={{ animationDelay: '.42s' }}>
-          <li className="flex items-center gap-2"><Code2 className="size-4 text-accent-2" />Source on GitHub</li>
+          <li className="flex items-center gap-2"><Code2 className="size-4 text-accent-2" />Free beta</li>
           <li className="flex items-center gap-2"><Monitor className="size-4 text-accent-2" />Windows desktop</li>
           <li className="flex items-center gap-2"><Bot className="size-4 text-accent-2" />AI-powered reviews</li>
           <li className="flex items-center gap-2"><GitPullRequest className="size-4 text-accent-2" />GitHub integration</li>
@@ -37,7 +37,7 @@ export function Hero({ release, onZoom }: { release: ReleaseInfo; onZoom: (file:
       <div className="enter-app relative mx-auto mt-14 sm:mt-16 max-w-6xl">
         <button type="button" onClick={() => onZoom('dashboard')} className="block w-full cursor-zoom-in text-left" aria-label="Enlarge the dashboard screenshot">
           <AppWindow>
-            <img src={shot('dashboard')} alt="ZeroPulse PR Review Agent dashboard: sidebar navigation, GitHub, model and sandbox status in the top bar, review totals and the recent reviews table"
+            <img src={shot('dashboard')} alt="PulseReview dashboard: sidebar navigation, GitHub, model and sandbox status in the top bar, review totals and the recent reviews table"
                  width={2880} height={1800} className="block w-full h-auto" fetchPriority="high" decoding="async" />
           </AppWindow>
         </button>

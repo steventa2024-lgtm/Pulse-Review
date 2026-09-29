@@ -42,7 +42,7 @@ def map_openai_error(exc: Exception) -> ProviderError:
         if code in (401, 403):
             return ProviderError("auth", "The provider rejected the API key.")
         if code == 402:
-            return ProviderError("paid_model", "The provider requires payment for this request; ZeroPulse only uses free models.")
+            return ProviderError("paid_model", "The provider requires payment for this request; PulseReview only uses free models.")
         if code == 429:
             return ProviderError("rate_limit", "Rate limit reached.", retryable=True)
         return ProviderError("unknown", f"Provider error HTTP {code}: {str(exc)[:300]}")
@@ -75,7 +75,7 @@ def rate_limit_error(exc: Exception) -> ProviderError:
                                           "(adding a small credit balance to OpenRouter raises it), or switch to local Ollama.")
         err.retryable = False
         return err
-    err = ProviderError("rate_limit", "This free model is busy right now (OpenRouter is throttling it). ZeroPulse retried a few times. "
+    err = ProviderError("rate_limit", "This free model is busy right now (OpenRouter is throttling it). PulseReview retried a few times. "
                                       "Try again in a minute or pick another ★ model — popular models like Qwen are throttled most.",
                         retryable=True)
     err.retry_after = _retry_after(exc)  # type: ignore[attr-defined]

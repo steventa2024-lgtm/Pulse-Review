@@ -110,7 +110,7 @@ def test_review_flow_progress_results_and_manual_publish(server, page):
     page.click("button:has-text('Post to GitHub')")
     page.wait_for_selector("text=Publication history", timeout=15000)
     posted = httpx.get(server + "/__test/posted").json()
-    assert len(posted) == 1 and posted[0]["event"] == "COMMENT" and "ZeroPulse PR Review" in posted[0]["body"]
+    assert len(posted) == 1 and posted[0]["event"] == "COMMENT" and "PulseReview" in posted[0]["body"]
     assert "Posted" in page.inner_text("body")
 
 

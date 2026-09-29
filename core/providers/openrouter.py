@@ -92,7 +92,7 @@ class OpenRouterProvider(LLMProvider):
                 base_url=self.config.base_url, api_key=self.config.api_key,
                 timeout=self.config.timeout, max_retries=0,
                 default_headers={"HTTP-Referer": "https://github.com/zeropulse/pr-review-agent",
-                                 "X-Title": "ZeroPulse PR Review Agent"},
+                                 "X-Title": "PulseReview"},
             )
         return self._client
 
@@ -155,7 +155,7 @@ class OpenRouterProvider(LLMProvider):
         if info is None:
             raise ProviderError("model_not_found", f"Model '{mid}' is not in the OpenRouter catalog. Pick another free model.")
         if not info.is_free:
-            raise ProviderError("paid_model", f"Model '{mid}' is not free. ZeroPulse never uses paid models; choose a free one.")
+            raise ProviderError("paid_model", f"Model '{mid}' is not free. PulseReview never uses paid models; choose a free one.")
         return info
 
     def supports_structured_output(self, model: str | None = None) -> bool:

@@ -161,7 +161,7 @@ class GitHubClient:
 
     def _headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:
         h = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
-             "User-Agent": "ZeroPulse-PR-Review-Agent"}
+             "User-Agent": "PulseReview"}
         if self._token:
             h["Authorization"] = f"Bearer {self._token}"
         if extra:

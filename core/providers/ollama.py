@@ -147,7 +147,7 @@ class OllamaProvider(LLMProvider):
                                 f"{self.config.model}", {"kind": "model_not_found"})
         if self.config.model not in names and f"{self.config.model}:latest" not in names:
             return HealthStatus(False, f"Model '{self.config.model}' is not installed in Ollama. Installed: "
-                                f"{', '.join(names[:8])}. ZeroPulse never downloads models for you.", {"kind": "model_not_found"})
+                                f"{', '.join(names[:8])}. PulseReview never downloads models for you.", {"kind": "model_not_found"})
         return HealthStatus(True, f"Ollama reachable; {self.config.model} is installed.", {"models": names})
 
     def generate(self, messages: list[dict[str, str]], *, json_mode: bool = False,

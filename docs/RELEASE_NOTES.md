@@ -1,13 +1,18 @@
-## ZeroPulse PR Review Agent — v0.1.1 beta
+## PulseReview — v0.1.2 beta
 
 Beta of the Windows desktop app. **Beta software:** expect rough edges and please report issues.
 
 ### Download
-- `ZeroPulsePRReview.exe` — single-file Windows 10/11 (x64) executable, no Python needed.
-- `ZeroPulsePRReview.exe.sha256` — checksum.
+- `PulseReview.exe` — single-file Windows 10/11 (x64) executable, no Python needed.
+- `PulseReview.exe.sha256` — checksum.
 
 The exe is not code-signed yet, so Windows SmartScreen may warn on first launch (More info → Run anyway).
 It opens in a native window when the Microsoft Edge WebView2 runtime is present, otherwise in your default browser.
+
+### New in 0.1.2
+- The app is now called **PulseReview**, developed and licensed by **ZeroPulse** (see LICENSE). The download is now `PulseReview.exe`.
+- Website: https://pulse-review.vercel.app
+- Your settings, history and saved keys from earlier betas are kept (same data folder).
 
 ### New in 0.1.1
 - Bring your own setup: review **public pull requests without signing in to GitHub** — just pick a model and paste the link

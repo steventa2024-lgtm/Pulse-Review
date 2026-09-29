@@ -69,7 +69,7 @@ def register(ctx: Ctx) -> None:
 def github_panel(ctx: Ctx, save) -> None:
     svc, mgr = ctx.services, ctx.services.config_mgr
     with card():
-        with setting("Account", "ZeroPulse reads pull requests and, only when you confirm, posts review comments."):
+        with setting("Account", "PulseReview reads pull requests and, only when you confirm, posts review comments."):
             account = ui.column().classes("w-full gap-3")
         with setting("Repository access", "Private repositories need the broader “repo” permission."):
             priv = ui.checkbox("Include private repositories", value=mgr.config.github.include_private_repos,
@@ -85,7 +85,7 @@ def github_panel(ctx: Ctx, save) -> None:
         with ui.expansion("How to create it (about a minute)").classes("w-full").props("dense"):
             ui.markdown(
                 f"1. Open **[New OAuth App]({OAUTH_APP_URL})** on GitHub.\n"
-                "2. Application name: `ZeroPulse PR Review` · Homepage URL: `http://127.0.0.1` · Callback URL: `http://127.0.0.1`\n"
+                "2. Application name: `PulseReview` · Homepage URL: `http://127.0.0.1` · Callback URL: `http://127.0.0.1`\n"
                 "3. Tick **Enable Device Flow**, then **Register application**.\n"
                 "4. Copy the **Client ID** (looks like `Ov23li…`) and paste it below. No client secret is needed.")
         with field("OAuth Client ID"):
@@ -171,7 +171,7 @@ def github_panel(ctx: Ctx, save) -> None:
         cancel = threading.Event()
         with ui.dialog().props("persistent") as d, ui.card().classes("zp-card w-[460px] items-center gap-4"):
             ui.label("Sign in with GitHub").classes("zp-h2 self-start")
-            ui.label("Enter this code on GitHub to authorize ZeroPulse:").classes("zp-sub self-start")
+            ui.label("Enter this code on GitHub to authorize PulseReview:").classes("zp-sub self-start")
             ui.label(code.user_code).classes("zp-code w-full")
 
             def open_github() -> None:
@@ -515,7 +515,7 @@ def app_panel(ctx: Ctx, save) -> None:
             def install_docker() -> None:
                 with ui.dialog().props("persistent") as d, ui.card().classes("zp-card w-[640px] max-w-full"):
                     ui.label("Install Docker Desktop").classes("zp-h2")
-                    ui.label("ZeroPulse will run Windows Package Manager (winget) to install Docker Desktop from Docker's official "
+                    ui.label("PulseReview will run Windows Package Manager (winget) to install Docker Desktop from Docker's official "
                              "package. Windows will ask for administrator permission. The download is about 500 MB; Docker may also "
                              "enable WSL 2 and ask you to restart your PC.").classes("zp-sub")
                     log = ui.log(max_lines=200).classes("w-full h-56 zp-mono")

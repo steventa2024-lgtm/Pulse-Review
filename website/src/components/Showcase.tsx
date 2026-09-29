@@ -18,7 +18,7 @@ export function Showcase({ onZoom }: { onZoom: (file: string) => void }) {
   }
 
   return (
-    <Section id="screenshots" eyebrow="Screenshots" title="Experience ZeroPulse PR Review Agent."
+    <Section id="screenshots" eyebrow="Screenshots" title="Experience PulseReview."
              intro="Real screenshots of the desktop app. Pick a screen to see what it does.">
       <div role="tablist" aria-label="Application screens" onKeyDown={onKey}
            className="-mx-5 sm:mx-0 flex gap-2 overflow-x-auto px-5 sm:px-0 pb-2 [scrollbar-width:none]">
@@ -35,7 +35,7 @@ export function Showcase({ onZoom }: { onZoom: (file: string) => void }) {
       <div id="screen-panel" role="tabpanel" aria-labelledby={`tab-${s.id}`} className="mt-6 grid gap-8 lg:grid-cols-[1fr_300px] items-start">
         <button type="button" onClick={() => onZoom(s.file)} className="group relative block cursor-zoom-in text-left" aria-label={`Enlarge the ${s.label} screenshot`}>
           <AppWindow>
-            <img key={s.file} src={shot(s.file)} alt={`${s.label} screen of ZeroPulse PR Review Agent`} width={2880} height={1800}
+            <img key={s.file} src={shot(s.file)} alt={`${s.label} screen of PulseReview`} width={2880} height={1800}
                  loading="lazy" decoding="async" className="shot-in block w-full h-auto" />
           </AppWindow>
           <span className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-lg border border-line-strong bg-bg/85 px-2.5 py-1.5 text-xs text-ink-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">

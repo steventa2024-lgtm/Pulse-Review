@@ -51,7 +51,7 @@ def test_dry_run_is_default_and_publishes_nothing(wired, capsys):
     pull, _ = wired
     assert review_agent.main([URL]) == 0
     cap = capsys.readouterr()
-    assert "ZeroPulse PR Review Report" in cap.out and "nothing was published" in cap.err
+    assert "PulseReview Report" in cap.out and "nothing was published" in cap.err
     assert pull.reviews == []
     assert review_agent.main([URL, "--dry-run"]) == 0 and pull.reviews == []
 
@@ -76,7 +76,7 @@ def test_output_file_and_model_provider_plumbing(wired, tmp_path, capsys):
     assert review_agent.main([URL, "--output", str(out), "--model", "google/gemma-3-27b-it:free", "--provider", "openrouter"]) == 0
     assert seen == {"provider": "openrouter", "model": "google/gemma-3-27b-it:free"}
     text = out.read_text(encoding="utf-8")
-    assert text.startswith("# ZeroPulse PR Review Report")
+    assert text.startswith("# PulseReview Report")
     assert "google/gemma-3-27b-it:free" in text
     assert capsys.readouterr().out == ""  # with --output and no --json, stdout stays quiet
 

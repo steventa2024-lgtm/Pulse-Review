@@ -6,7 +6,7 @@ const LINKS = [
   { id: 'features', label: 'Features' },
   { id: 'how-it-works', label: 'How It Works' },
   { id: 'screenshots', label: 'Screenshots' },
-  { id: 'open-source', label: 'Open Source' },
+  { id: 'open-source', label: 'AI models' },
   { id: 'faq', label: 'FAQ' },
 ]
 
@@ -35,9 +35,9 @@ export function Nav({ downloadUrl }: { downloadUrl: string }) {
   return (
     <header className={`sticky top-0 z-50 border-b transition-colors duration-200 ${scrolled || open ? 'border-line bg-bg/90 backdrop-blur-md' : 'border-transparent bg-transparent'}`}>
       <nav className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5 sm:px-8" aria-label="Main">
-        <a href="#top" className="flex items-center gap-2.5 shrink-0" aria-label="ZeroPulse PR Review Agent — home">
+        <a href="#top" className="flex items-center gap-2.5 shrink-0" aria-label="PulseReview — home">
           <img src="./brand/icon.png" alt="" className="size-8 rounded-lg" width={32} height={32} />
-          <span className="font-semibold tracking-tight">Zero<span className="text-accent-2">Pulse</span> <span className="text-ink-2 font-medium hidden sm:inline">PR Review Agent</span></span>
+          <span className="font-semibold tracking-tight">Pulse<span className="text-accent-2">Review</span> <span className="text-ink-2 font-medium hidden sm:inline">by ZeroPulse</span></span>
         </a>
         <ul className="mx-auto hidden lg:flex items-center gap-1">
           {LINKS.map(l => (

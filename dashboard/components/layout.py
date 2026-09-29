@@ -51,14 +51,14 @@ def frame(ctx: Ctx, active: str):
     with ui.header(elevated=False).classes("items-center justify-between px-4 gap-4 no-wrap"):
         with ui.row().classes("items-center gap-3 no-wrap"):
             ui.image("/assets/icon.png").classes("w-8 h-8 rounded-lg")
-            ui.html('<span class="zp-brand">Zero<b>Pulse</b> <span style="font-weight:500;color:var(--zp-text-2)">PR Review</span></span>')
+            ui.html('<span class="zp-brand">Pulse<b>Review</b> <span style="font-weight:500;color:var(--zp-text-2)">by ZeroPulse</span></span>')
         with ui.row().classes("items-center gap-2 no-wrap"):
             _status_chip(ctx, "github_text", "github_ok", "hub", "/settings?tab=github")
             _status_chip(ctx, "model_chip", "model_ok", "auto_awesome", "/settings?tab=ai")
             _status_chip(ctx, "docker_text", "docker_ok", "inventory_2", "/settings?tab=app", "docker_reason")
             ui.element("div").classes("w-2")
             icon_btn("settings", lambda: ui.navigate.to("/settings"), "Settings")
-            icon_btn("power_settings_new", _quit_dialog, "Quit ZeroPulse")
+            icon_btn("power_settings_new", _quit_dialog, "Quit PulseReview")
 
     with ui.left_drawer(value=True, fixed=True).props("width=250 breakpoint=900").classes("p-0"), \
             ui.column().classes("zp-sidebar no-wrap gap-0"):
@@ -83,7 +83,7 @@ def frame(ctx: Ctx, active: str):
 
 def _quit_dialog() -> None:
     with ui.dialog() as d, ui.card().classes("zp-card w-[420px]"):
-        ui.label("Quit ZeroPulse?").classes("zp-h2")
+        ui.label("Quit PulseReview?").classes("zp-h2")
         ui.label("Running reviews will be interrupted. Your review history is kept.").classes("zp-sub")
         with ui.row().classes("justify-end w-full gap-2 mt-2"):
             btn("Cancel", on_click=d.close, kind="ghost")

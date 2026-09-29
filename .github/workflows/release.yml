@@ -6,8 +6,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to build and publish (e.g. v0.1.0beta)"
+        description: "Release tag to build and publish (e.g. v0.1.2beta)"
         required: true
+      source_ref:
+        description: "Branch that holds the app source (main only has the README and website)"
+        required: false
+        default: "claude/ecstatic-ramanujan-qz4m34"
 
 permissions:
   contents: write
@@ -19,6 +23,8 @@ jobs:
       RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.source_ref || github.ref }}
 
       - uses: actions/setup-python@v5
         with:
@@ -32,7 +38,7 @@ jobs:
       - name: Smoke test — launch the exe from another folder and wait for the UI server
         shell: powershell
         run: |
-          $exe = Join-Path $PWD 'dist\ZeroPulsePRReview.exe'
+          $exe = Join-Path $PWD 'dist\PulseReview.exe'
           $work = New-Item -ItemType Directory -Force -Path (Join-Path $env:RUNNER_TEMP 'smoke')
           $env:ZEROPULSE_DATA_DIR = Join-Path $env:RUNNER_TEMP 'smoke-data'
           $p = Start-Process -FilePath $exe -ArgumentList '--browser','--port','8765' -WorkingDirectory $work -PassThru
@@ -47,7 +53,7 @@ jobs:
             if ($css.StatusCode -ne 200) { throw 'bundled assets missing' }
           }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-          Get-Process ZeroPulsePRReview -ErrorAction SilentlyContinue | Stop-Process -Force
+          Get-Process PulseReview -ErrorAction SilentlyContinue | Stop-Process -Force
           if (-not $ok) { throw 'The executable did not start its UI server within 3 minutes.' }
           if (-not (Test-Path (Join-Path $env:ZEROPULSE_DATA_DIR 'reviews.db'))) { throw 'User data was not created in the data directory.' }
           Write-Host 'Smoke test passed: UI served, assets bundled, data written outside the bundle.'
@@ -55,17 +61,17 @@ jobs:
       - name: Checksum
         shell: powershell
         run: |
-          $h = (Get-FileHash dist\ZeroPulsePRReview.exe -Algorithm SHA256).Hash.ToLower()
-          "$h  ZeroPulsePRReview.exe" | Out-File -Encoding ascii dist\ZeroPulsePRReview.exe.sha256
-          Get-Content dist\ZeroPulsePRReview.exe.sha256
+          $h = (Get-FileHash dist\PulseReview.exe -Algorithm SHA256).Hash.ToLower()
+          "$h  PulseReview.exe" | Out-File -Encoding ascii dist\PulseReview.exe.sha256
+          Get-Content dist\PulseReview.exe.sha256
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          name: ZeroPulse PR Review Agent ${{ env.RELEASE_TAG }}
+          name: PulseReview ${{ env.RELEASE_TAG }}
           prerelease: true
           body_path: docs/RELEASE_NOTES.md
           files: |
-            dist/ZeroPulsePRReview.exe
-            dist/ZeroPulsePRReview.exe.sha256
+            dist/PulseReview.exe
+            dist/PulseReview.exe.sha256

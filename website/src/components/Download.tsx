@@ -12,11 +12,11 @@ export function Download({ release }: { release: ReleaseInfo }) {
         <img src="./brand/icon.png" alt="" className="mx-auto size-16 rounded-2xl" width={64} height={64} loading="lazy" />
         <h2 className="mt-6 text-3xl sm:text-4xl font-bold tracking-tight text-balance">Better Code Starts With Better Reviews.</h2>
         <p className="mx-auto mt-4 max-w-xl text-lg text-ink-2">
-          Download ZeroPulse PR Review Agent and bring AI-powered code review into your development workflow.
+          Download PulseReview and bring AI-powered code review into your development workflow.
         </p>
         <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Button href={release.downloadUrl} className="w-full sm:w-auto h-12 px-6"><WindowsIcon /> Download for Windows</Button>
-          <Button href={REPO_URL} variant="secondary" external className="w-full sm:w-auto h-12 px-6"><GitHubIcon /> View Source on GitHub</Button>
+          <Button href={REPO_URL} variant="secondary" external className="w-full sm:w-auto h-12 px-6"><GitHubIcon /> View on GitHub</Button>
         </div>
         <p className="mt-5 text-sm text-muted">
           {prettyVersion(release.tag)}{release.sizeMB ? ` · ${release.sizeMB} MB` : ''} · Windows 10/11 (64-bit) ·{' '}

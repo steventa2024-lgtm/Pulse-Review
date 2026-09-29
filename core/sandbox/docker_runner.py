@@ -1,6 +1,6 @@
 """Docker-based isolated execution of generated tests (Linux containers).
 
-Safeguards: no privileged mode, no docker.sock, no host credentials or home mounts, no ZeroPulse secrets in
+Safeguards: no privileged mode, no docker.sock, no host credentials or home mounts, no PulseReview secrets in
 the container environment, network disabled for test execution, CPU/memory/pid limits, read-only root FS,
 timeout with forced cleanup, output cap, disposable working directory.
 """
@@ -70,7 +70,7 @@ class DockerRunner(SandboxRunner):
         if self._availability is not None and self._availability[0]:
             return self._availability
         if not (shutil.which(self.docker) or Path(self.docker).is_file()):
-            return self._set(False, "Docker is not installed (or not found). Install Docker Desktop, then restart ZeroPulse. "
+            return self._set(False, "Docker is not installed (or not found). Install Docker Desktop, then restart PulseReview. "
                                     + UNAVAILABLE_MESSAGE)
         try:
             p = self._run_cli(["info", "--format", "{{.OSType}}"], timeout=25)

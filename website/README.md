@@ -1,4 +1,4 @@
-# ZeroPulse PR Review Agent — showcase website
+# PulseReview — website (by ZeroPulse)
 
 Single-page product site for the desktop app. React + TypeScript + Vite + Tailwind CSS v4 + Lucide icons.
 It is a separate layer: nothing here changes the desktop application.
@@ -26,14 +26,14 @@ or on any static host (Netlify, Vercel, Cloudflare Pages, S3…).
 
 `.github/workflows/website.yml` builds and deploys on every push that touches `website/`.
 One-time setup: **Repository → Settings → Pages → Build and deployment → Source: GitHub Actions**.
-The site is then served at `https://steventa2024-lgtm.github.io/Pulse-Review/`
+Live site: https://pulse-review.vercel.app (Vercel, see below).
 (update the `og:image` URLs in `index.html` if you use a custom domain).
 
 ## Download button
 
 `src/hooks/useRelease.ts` reads the newest published GitHub release (pre-releases included) from the GitHub API and links to
 its `.exe` asset, showing the real version, size and date. If the API is unreachable it falls back to the
-`FALLBACK_DOWNLOAD_URL` in `src/config.ts` (currently the `v0.1.1beta` asset). New releases are picked up automatically —
+`FALLBACK_DOWNLOAD_URL` in `src/config.ts` (currently the `v0.1.2beta` asset). New releases are picked up automatically —
 publish them with `.github/workflows/release.yml`.
 
 ## Screenshots

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Builds dist\ZeroPulsePRReview.exe (single-file, windowed) for ZeroPulse PR Review Agent.
+  Builds dist\PulseReview.exe (single-file, windowed) for PulseReview.
 .DESCRIPTION
   1 verify Python 3.11+  2 create/reuse .venv  3 install dependencies inside .venv  4 run the test suite
   5 build with nicegui-pack (PyInstaller)  6 verify the output exists  7 print its path.
@@ -12,7 +12,7 @@ param([switch]$SkipTests, [switch]$Clean)
 
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
-$AppName = 'ZeroPulsePRReview'
+$AppName = 'PulseReview'
 
 function Fail([string]$Message) {
     Write-Host ""

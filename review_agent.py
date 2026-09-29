@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""ZeroPulse PR Review Agent — command-line interface (shares the pipeline with the dashboard)."""
+"""PulseReview — command-line interface (shares the pipeline with the dashboard)."""
 from __future__ import annotations
 
 import argparse

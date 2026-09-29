@@ -7,7 +7,7 @@ from .schemas import PRData, ReviewResult
 
 def render_report(result: ReviewResult, pr: PRData | None = None, review_url: str | None = None) -> str:
     m = result.metadata
-    out = ["# ZeroPulse PR Review Report", ""]
+    out = ["# PulseReview Report", ""]
     if pr:
         out += [f"**{pr.ref.full_name}#{pr.ref.number}** — {pr.title}  ", f"{pr.html_url or pr.ref.url}", ""]
     out += [f"- Overall risk: **{result.overall_risk}**",

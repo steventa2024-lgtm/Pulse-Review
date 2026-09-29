@@ -30,7 +30,7 @@ def run_app(*, native: bool, port: int, show: bool = True, services: AppServices
     ui.run(
         host="127.0.0.1",  # never exposed to the LAN
         port=port,
-        title="ZeroPulse PR Review Agent",
+        title="PulseReview",
         favicon=str(paths.assets_dir() / "icon.png"),
         dark=True,
         native=native,

@@ -193,7 +193,7 @@ def test_publish_requires_exact_confirmation_and_records_identifiers(tmp_path):
     out, db, pull, gh = _completed(tmp_path)
     pub = Publisher(GitHubClient("t", gh=gh), db)
     plan = pub.prepare(out.review_id, PublishOptions(mode="overview", include_test=True))
-    assert "ZeroPulse PR Review" in plan.body and "tests/test_orders.py" in plan.body and not plan.inline_comments
+    assert "PulseReview" in plan.body and "tests/test_orders.py" in plan.body and not plan.inline_comments
     with pytest.raises(ConfirmationError):
         pub.publish(out.review_id, plan, "acme/other#7")
     assert pull.reviews == []  # nothing posted on mismatch
