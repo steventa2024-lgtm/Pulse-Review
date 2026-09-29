@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://pulse-review.vercel.app"><b>🌐 Website</b></a> ·
+  <a href="https://pulse-review-three.vercel.app/"><b>🌐 Website</b></a> ·
   <a href="https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/v0.1.2beta/PulseReview.exe"><b>⬇ Download for Windows (v0.1.2 beta)</b></a> ·
   <a href="https://github.com/steventa2024-lgtm/Pulse-Review/releases">All downloads</a>
 </p>
