@@ -224,6 +224,7 @@ class Chunk:
     text: str
     tokens: int
     partial: list[str] = field(default_factory=list)
+    extra: dict[str, str] = field(default_factory=dict)  # path -> full source at the PR head (deep depth)
 
 
 @dataclass

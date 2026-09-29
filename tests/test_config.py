@@ -59,10 +59,11 @@ def test_file_secret_store_roundtrip(tmp_path):
 
 
 def test_redaction_patterns():
-    text = f"token={FAKE_TOKEN}\nkey = 'sk-or-v1-{'q' * 30}'\npassword = \"hunter2hunter2\"\nAKIAABCDEFGHIJKLMNOP\nnormal line"
+    aws = "AKIA" + "ABCDEFGHIJKLMNOP"  # dummy value built at runtime
+    text = f"token={FAKE_TOKEN}\nkey = 'sk-or-v1-{'q' * 30}'\npassword = \"hunter2hunter2\"\n{aws}\nnormal line"
     red, n = redact_secrets(text)
     assert n >= 4
-    assert FAKE_TOKEN not in red and "hunter2" not in red and "AKIAABCDEFGHIJKLMNOP" not in red
+    assert FAKE_TOKEN not in red and "hunter2" not in red and aws not in red
     assert "normal line" in red
     assert mask_secret(FAKE_TOKEN).startswith("ghp_") and FAKE_TOKEN not in mask_secret(FAKE_TOKEN)
 

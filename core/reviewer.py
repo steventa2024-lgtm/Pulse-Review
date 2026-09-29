@@ -138,6 +138,8 @@ class Reviewer:
             self._pr_header(pr, ctx, hints or [])
             + f"\n\nAnalyse the following diff (part {chunk.index + 1}) for: {self.focus.describe()}.\n\n"
             + wrap_untrusted(f"diff_chunk_{chunk.index + 1}", self._prep(chunk.text))
+            + "".join("\n\nFull file at the PR head commit (for surrounding context only; report issues only on changed lines):\n"
+                      + wrap_untrusted(f"full_source:{path}", self._prep(src)) for path, src in chunk.extra.items())
             + "\n\nReturn the JSON object now."
         )
         return self._generate_validated([{"role": "system", "content": system}, {"role": "user", "content": user}], LLMReview)

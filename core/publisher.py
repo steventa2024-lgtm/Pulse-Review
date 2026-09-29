@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import logging
 import re
@@ -107,7 +108,7 @@ def render_review_markdown(result: ReviewResult, ref: PRRef, overview: list[Issu
     if include_test and result.test_file:
         t = result.test_file
         status = {"not_run": "not executed", "passed": "passed in sandbox", "failed": "failed in sandbox", "error": "execution error"}[t.execution_status]
-        out += ["", f"<details><summary>Proposed test: <code>{t.filename}</code> ({t.framework}, {status})</summary>", "",
+        out += ["", f"<details><summary>Proposed test: <code>{html.escape(t.filename)}</code> ({t.framework}, {status})</summary>", "",
                 neutralize(t.purpose), ""]
         if t.needs_verification:
             out += ["> ⚠️ Draft — requires verification: " + neutralize("; ".join(t.verification_notes[:3])), ""]

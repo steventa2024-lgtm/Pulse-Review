@@ -9,7 +9,7 @@ config.json
 logs/
 build/
 dist/
-*.spec.bak
+*.spec
 .pytest_cache/
 .coverage
 *.log

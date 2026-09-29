@@ -164,6 +164,8 @@ class ReviewPipeline:
         budget = compute_input_budget(ctx_tokens, o.max_context_budget)
         plan = build_chunks(pr, budget, o.depth)
         limitations += plan.limitations + static.limitations
+        if o.depth == "deep":  # surrounding source from the PR commit, not just patch snippets
+            self._add_source_context(plan, pr, budget, fetch)
         raw: list[LLMIssue] = []
         summaries: list[str] = []
         failed_chunks: list[str] = []
@@ -262,6 +264,20 @@ class ReviewPipeline:
         return ReviewOutcome(self.review_id, result, pr)
 
     # -- pieces -----------------------------------------------------------------------
+    @staticmethod
+    def _add_source_context(plan, pr: PRData, budget: int, fetch) -> None:  # noqa: ANN001
+        from .context_builder import estimate_tokens
+        removed = {f.filename for f in pr.files if f.status == "removed"}
+        for chunk in plan.chunks:
+            room = budget - chunk.tokens
+            for fn in chunk.files[:3]:
+                if fn in removed or room < 400:
+                    continue
+                src = fetch(fn)
+                if src and estimate_tokens(src) <= room * 0.8:
+                    chunk.extra[fn] = src
+                    room -= estimate_tokens(src)
+
     def _connect_and_fetch(self, ref: PRRef) -> PRData:
         self._emit("connect", "done")
         self._emit("fetch", "running")

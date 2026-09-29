@@ -160,3 +160,21 @@ def test_static_risky_patterns_only_on_added_lines():
     rep = run_static_checks(prd, build_repo_context(prd), DiffIndex(prd.files))
     titles = [i.title for i in rep.issues]
     assert any("TLS" in t for t in titles) and not any("eval" in t for t in titles)  # eval line is context, not added
+
+
+def test_deep_depth_adds_surrounding_source_from_pr_commit_others_do_not(tmp_path):
+    from core.db import Database
+    from core.review_pipeline import ReviewOptions, ReviewPipeline
+    from tests.fixtures.pr_fixture import ORDERS_SRC
+    SUMMARY = {"summary": "s", "overall_risk": "low", "issues": []}
+
+    def run(depth):
+        gh, _ = make_gh()
+        prov = FakeProvider([GOOD_REVIEW, SUMMARY])
+        ReviewPipeline(github=GitHubClient("t", gh=gh), provider=prov, options=ReviewOptions(depth=depth, generate_tests=False),
+                       db=Database(tmp_path / f"{depth}.db")).run(PRRef(owner="acme", repo="shop", number=7))
+        return prov.calls[0][1]["content"]
+
+    deep, standard = run("deep"), run("standard")
+    assert "Full file at the PR head commit" in deep and "full_source:app/orders.py" in deep and "def checkout(cart):" in deep
+    assert "Full file at the PR head commit" not in standard
