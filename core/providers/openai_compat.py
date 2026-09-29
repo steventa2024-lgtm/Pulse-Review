@@ -18,7 +18,7 @@ def map_openai_error(exc: Exception) -> ProviderError:
     if isinstance(exc, openai.AuthenticationError | openai.PermissionDeniedError):
         return ProviderError("auth", "The provider rejected the API key (invalid, expired or lacking access).")
     if isinstance(exc, openai.RateLimitError):
-        return ProviderError("rate_limit", "Rate limit reached. Free models are throttled; wait a moment or pick another model.", retryable=True)
+        return rate_limit_error(exc)
     if isinstance(exc, openai.APITimeoutError):
         return ProviderError("timeout", "The model did not answer before the timeout. Increase the timeout or use a smaller context.", retryable=True)
     if isinstance(exc, openai.APIConnectionError):
@@ -49,6 +49,43 @@ def map_openai_error(exc: Exception) -> ProviderError:
     return ProviderError("unknown", f"Unexpected provider error: {exc}")
 
 
+def _retry_after(exc: Exception) -> float | None:
+    resp = getattr(exc, "response", None)
+    headers = getattr(resp, "headers", None) or {}
+    for key in ("retry-after", "x-ratelimit-reset-after"):
+        val = headers.get(key) if hasattr(headers, "get") else None
+        try:
+            if val is not None:
+                return max(0.0, float(val))
+        except ValueError:
+            pass
+    reset = headers.get("x-ratelimit-reset") if hasattr(headers, "get") else None
+    try:
+        if reset:  # epoch milliseconds (OpenRouter)
+            return max(0.0, float(reset) / 1000 - time.time())
+    except ValueError:
+        pass
+    return None
+
+
+def rate_limit_error(exc: Exception) -> ProviderError:
+    text = str(exc).lower()
+    if "per-day" in text or "per day" in text or "daily" in text:
+        err = ProviderError("rate_limit", "You've used today's free OpenRouter requests for your account. The limit resets daily "
+                                          "(adding a small credit balance to OpenRouter raises it), or switch to local Ollama.")
+        err.retryable = False
+        return err
+    err = ProviderError("rate_limit", "This free model is busy right now (OpenRouter is throttling it). ZeroPulse retried a few times. "
+                                      "Try again in a minute or pick another ★ model — popular models like Qwen are throttled most.",
+                        retryable=True)
+    err.retry_after = _retry_after(exc)  # type: ignore[attr-defined]
+    return err
+
+
+RATE_LIMIT_RETRIES = 4
+MAX_RATE_WAIT = 30.0
+
+
 def chat_completion(provider: LLMProvider, client: openai.OpenAI, messages: list[dict[str, str]], *,
                     json_mode: bool, max_tokens: int | None, temperature: float | None,
                     extra_body: dict[str, Any] | None = None) -> GenerationResult:
@@ -76,8 +113,12 @@ def chat_completion(provider: LLMProvider, client: openai.OpenAI, messages: list
                 log.info("Model rejected JSON mode; retrying with prompt-only JSON")
                 use_json = False
                 continue
-            if err.retryable and attempt < cfg.max_retries:
-                time.sleep(cfg.retry_backoff * (2 ** attempt))
+            limit = max(cfg.max_retries, RATE_LIMIT_RETRIES) if err.kind == "rate_limit" else cfg.max_retries
+            if err.retryable and attempt < limit:
+                wait = getattr(err, "retry_after", None)
+                if wait is None:
+                    wait = cfg.retry_backoff * (2 ** attempt) * (2 if err.kind == "rate_limit" else 1)
+                time.sleep(min(wait, MAX_RATE_WAIT))
                 attempt += 1
                 continue
             raise err from exc

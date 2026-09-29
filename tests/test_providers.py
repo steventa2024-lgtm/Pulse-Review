@@ -117,7 +117,7 @@ def test_json_mode_rejection_downgrades_once():
     (_err(openai.InternalServerError, 500), "unavailable"),
 ])
 def test_openrouter_error_mapping(exc, kind):
-    sdk = FakeSDK([exc, exc, exc])
+    sdk = FakeSDK([exc] * 6)
     with pytest.raises(ProviderError) as e:
         _or(sdk=sdk).generate([{"role": "user", "content": "x"}])
     assert e.value.kind == kind and e.value.message
@@ -279,3 +279,25 @@ def test_review_models_filters_non_text_and_unsuitable_and_ranks_code_first():
     ids = [m.id for m in p.review_models()]
     assert ids == ["cohere/north-mini-code:free", "qwen/qwen3.8-27b:free", "google/gemma-4-31b-it:free"]
     assert all(m.recommended for m in p.review_models()[:3])
+
+
+def test_rate_limit_retries_more_and_honours_retry_after(monkeypatch):
+    import core.providers.openai_compat as oc
+    slept = []
+    monkeypatch.setattr(oc.time, "sleep", slept.append)
+    req = httpx.Request("POST", "https://x")
+    e = openai.RateLimitError("rate limited upstream", response=httpx.Response(429, request=req, headers={"retry-after": "3"}), body=None)
+    sdk = FakeSDK([e, e, e, "ok"])
+    assert _or(sdk=sdk).generate([{"role": "user", "content": "x"}]).text == "ok"
+    assert slept == [3.0, 3.0, 3.0]
+
+
+def test_daily_free_quota_is_not_retried_and_explained(monkeypatch):
+    import core.providers.openai_compat as oc
+    monkeypatch.setattr(oc.time, "sleep", lambda s: None)
+    req = httpx.Request("POST", "https://x")
+    e = openai.RateLimitError("Rate limit exceeded: free-models-per-day", response=httpx.Response(429, request=req), body=None)
+    sdk = FakeSDK([e, "never"])
+    with pytest.raises(ProviderError) as err:
+        _or(sdk=sdk).generate([{"role": "user", "content": "x"}])
+    assert "today's free" in err.value.message and len(sdk.calls) == 1
