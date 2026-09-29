@@ -8,6 +8,7 @@ from nicegui import app, ui
 from core import __version__
 
 from ..context import Ctx
+from .external import INTERCEPT_JS
 from .kit import btn, icon_btn
 
 NAV = [
@@ -42,7 +43,7 @@ def frame(ctx: Ctx, active: str):
     ui.dark_mode(True)
     ui.colors(primary="#4c8dff", secondary="#7d8795", accent="#a48cf0", positive="#3fb950", negative="#f06a63",
               warning="#d9a13b", info="#4c8dff", dark="#11151c", dark_page="#0b0e13")
-    ui.add_head_html('<link rel="stylesheet" href="/assets/style.css"><meta name="color-scheme" content="dark">')
+    ui.add_head_html('<link rel="stylesheet" href="/assets/style.css"><meta name="color-scheme" content="dark">' + INTERCEPT_JS)
     ctx.refresh_static()
 
     with ui.header(elevated=False).classes("items-center justify-between px-4 gap-4 no-wrap"):

@@ -4,6 +4,7 @@ import dataclasses
 import json
 from pathlib import Path
 
+from dashboard.components.external import open_external
 from nicegui import run, ui
 
 from core.diff_parser import DiffIndex
@@ -78,7 +79,7 @@ def register(ctx: Ctx) -> None:
                             ui.label(f"commit {row['head_sha'][:8]}" if row["head_sha"] else "").classes("zp-muted zp-xs zp-mono")
                             ui.label(fmt_time(row["updated_at"])).classes("zp-muted zp-xs")
                     with ui.row().classes("gap-1 no-wrap"):
-                        ui.button("Open on GitHub", icon="open_in_new", on_click=lambda: ui.navigate.to(row["pr_url"], new_tab=True), color=None).props("flat no-caps").classes("zp-btn-ghost")
+                        ui.button("Open on GitHub", icon="open_in_new", on_click=lambda: open_external(row["pr_url"]), color=None).props("flat no-caps").classes("zp-btn-ghost")
                         ui.button("Re-run", icon="replay", on_click=lambda: ui.navigate.to(f"/review/new?url={row['pr_url']}"), color=None).props("flat no-caps").classes("zp-btn-ghost")
                         ui.button("Delete", icon="delete_outline", on_click=lambda: delete(), color=None).props("flat no-caps").classes("zp-btn-danger")
                 if result and result.metadata.input_tokens is not None:
@@ -199,7 +200,7 @@ def issue_card(i: Issue, expanded: bool, sel: dict[str, bool], pr: PRData | None
                 copy_button(finding_text(i, pr_url), "Copy finding")
                 if i.suggested_code or i.suggested_fix:
                     copy_button(i.suggested_code or i.suggested_fix, "Copy suggested fix", "code")
-                ui.button("Open on GitHub", icon="open_in_new", on_click=lambda: ui.navigate.to(github_diff_url(pr_url, i.file, i.line, i.side), new_tab=True), color=None).props("flat no-caps").classes("zp-btn-ghost zp-btn-sm")
+                ui.button("Open on GitHub", icon="open_in_new", on_click=lambda: open_external(github_diff_url(pr_url, i.file, i.line, i.side)), color=None).props("flat no-caps").classes("zp-btn-ghost zp-btn-sm")
                 ui.space()
                 cb = ui.checkbox("Include when publishing", value=True)
                 cb.on_value_change(lambda e, iid=i.id: sel.__setitem__(iid, bool(e.value)))

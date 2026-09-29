@@ -3,6 +3,7 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
+from dashboard.components.external import open_external
 from nicegui import run, ui
 
 from core import paths
@@ -170,7 +171,7 @@ def github_panel(ctx: Ctx, save) -> None:
 
             def open_github() -> None:
                 ui.clipboard.write(code.user_code)
-                ui.navigate.to(code.verification_uri, new_tab=True)
+                open_external(code.verification_uri)
 
             btn("Copy code & open GitHub", "open_in_new", open_github, kind="primary", size="lg").classes("w-full")
             with ui.row().classes("items-center gap-2 self-start"):
