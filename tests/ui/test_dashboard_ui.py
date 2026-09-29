@@ -58,6 +58,17 @@ def page(server):
         browser.close()
 
 
+def choose_pr(page):
+    """Pick the repository and then the pull request from the pickers (no URL typing)."""
+    page.wait_for_timeout(1200)  # repositories + models load
+    page.locator(".q-select").nth(0).click()
+    page.locator(".q-menu .q-item", has_text="acme/shop").click()
+    page.wait_for_timeout(800)
+    page.locator(".q-select").nth(1).click()
+    page.locator(".q-menu .q-item", has_text="#7").click()
+    page.wait_for_selector("text=Add discount cap and qty parser", timeout=10000)
+
+
 def test_all_pages_render_without_js_errors(server, page):
     for path, text in [("/", "Dashboard"), ("/review/new", "New review"), ("/history", "Review history"),
                        ("/watch", "Watched repositories"), ("/testlab", "Test lab"), ("/settings", "Settings"),
@@ -74,8 +85,7 @@ def test_server_is_bound_to_loopback_only(server):
 
 def test_review_flow_progress_results_and_manual_publish(server, page):
     page.goto(server + "/review/new")
-    page.get_by_placeholder("https://github.com/owner/repo/pull/123").fill(URL)
-    page.wait_for_timeout(800)  # model list loads
+    choose_pr(page)
     page.get_by_role("button", name="Start review").click()
     # real pipeline stage labels appear (no percentages)
     page.wait_for_selector("text=Analyzing code changes", timeout=10000)
@@ -106,8 +116,7 @@ def test_review_flow_progress_results_and_manual_publish(server, page):
 
 def test_stale_pr_blocks_publishing_in_ui(server, page):
     page.goto(server + "/review/new")
-    page.get_by_placeholder("https://github.com/owner/repo/pull/123").fill(URL)
-    page.wait_for_timeout(800)  # model list loads
+    choose_pr(page)
     page.get_by_role("button", name="Start review").click()
     page.wait_for_url("**/review/*", timeout=30000)
     page.wait_for_selector("text=Detected issues", timeout=10000)
@@ -131,6 +140,7 @@ def test_history_persists_and_delete_works(server, page):
 
 def test_invalid_url_gives_clear_error_in_ui(server, page):
     page.goto(server + "/review/new")
+    page.get_by_text("Or paste a pull-request link").click()
     page.get_by_placeholder("https://github.com/owner/repo/pull/123").fill("https://evil.example.com/a/b/pull/1")
     page.get_by_role("button", name="Look up").click()
     page.wait_for_selector("text=Only github.com pull-request URLs are supported.", timeout=5000)

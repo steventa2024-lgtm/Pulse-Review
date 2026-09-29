@@ -213,3 +213,19 @@ def test_safe_extract_zip(tmp_path):
 def test_safe_extract_zip_blocks_zip_slip(tmp_path, name):
     with pytest.raises(GitHubError):
         safe_extract_zip(_zip({name: b"x"}), tmp_path)
+
+
+def test_repo_and_pr_listing_for_pickers():
+    from datetime import datetime, timezone
+    from types import SimpleNamespace as NS
+    gh, pull = make_gh()
+    repo = gh.repo
+    repo.pushed_at = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    pr_obj = NS(number=7, title="Fix", user=NS(login="dev1"), html_url="https://github.com/acme/shop/pull/7",
+                head=NS(sha="h" * 40), updated_at=datetime(2026, 9, 2, tzinfo=timezone.utc), draft=False)
+    repo.get_pulls = lambda state, sort, direction: [pr_obj]
+    c = GitHubClient("t", gh=gh)
+    assert c.list_repos_detailed() == [{"full_name": "acme/shop", "private": False, "pushed_at": "2026-09-01T00:00:00+00:00"}]
+    prs = c.list_pull_requests("acme/shop")
+    assert prs[0].number == 7 and prs[0].author == "dev1" and prs[0].url.endswith("/pull/7")
+    assert GitHubClient(None, gh=gh).list_repos_detailed() == []

@@ -7,7 +7,7 @@ from core.providers import ProviderError
 from core.review_pipeline import STEPS
 from core.schemas import PRRef
 
-from ..components.kit import btn, callout, card, field, page_header, segmented, select, text_input
+from ..components.kit import btn, callout, card, field, page_header, segmented, select, text_input  # noqa: F401
 from ..components.layout import frame
 from ..components.widgets import pill
 from ..context import Ctx
@@ -19,17 +19,25 @@ def register(ctx: Ctx) -> None:
     def new_review(url: str = ""):
         svc = ctx.services
         cfg = svc.cfg
-        state = {"preview_private": False, "job": None, "timer": None}
+        state = {"preview_private": False, "job": None, "timer": None, "prs": {}}
 
         with frame(ctx, "new"):
-            page_header("New review", "Paste a pull-request link, pick a model, and start. Nothing is posted to GitHub.")
+            page_header("New review", "Pick a repository and pull request, choose a model, and start. Nothing is posted to GitHub.")
             with ui.row().classes("w-full gap-5 items-start no-wrap max-lg:flex-wrap"):
                 # ------------------------------------------------------------ left: form
                 with ui.column().classes("gap-5 flex-1 min-w-[360px]"):
                     with card("Pull request"):
-                        with ui.row().classes("w-full no-wrap items-center gap-2"):
-                            url_in = text_input("https://github.com/owner/repo/pull/123", value=url, classes="flex-1")
-                            btn("Look up", "search", lambda: check_pr(), kind="secondary")
+                        with ui.row().classes("w-full no-wrap items-end gap-2"):
+                            with field("Repository", classes="flex-1 min-w-0"):
+                                repo_sel = select({}, classes="w-full", with_input=True).props('placeholder="Loading your repositories…"')
+                            btn(icon="refresh", on_click=lambda: load_repos(), kind="secondary", tooltip="Reload repositories")
+                        with field("Pull request"):
+                            pr_sel = select({}, classes="w-full", with_input=True).props('placeholder="Choose a repository first"')
+                        pr_sel.disable()
+                        with ui.expansion("Or paste a pull-request link", value=bool(url)).classes("w-full").props("dense") as link_exp:
+                            with ui.row().classes("w-full no-wrap items-center gap-2 pt-2"):
+                                url_in = text_input("https://github.com/owner/repo/pull/123", value=url, classes="flex-1")
+                                btn("Look up", "search", lambda: check_pr(), kind="secondary")
                         preview = ui.column().classes("w-full gap-2")
 
                     with card("Model"):
@@ -49,7 +57,9 @@ def register(ctx: Ctx) -> None:
                         with sb_box:
                             sb_install = ui.checkbox("Install the project's dependencies first (network on during install only)")
                             sb_pull = ui.checkbox("Allow Docker to download the base image if missing")
-                        sb_note = ui.label().classes("zp-hint zp-warn")
+                        with ui.row().classes("items-center gap-2 no-wrap") as sb_note_row:
+                            sb_note = ui.label().classes("zp-hint zp-warn")
+                            btn("Set up sandbox", "build", lambda: ui.navigate.to("/settings?tab=app"), kind="ghost", size="sm")
                         consent_box = ui.column().classes("w-full")
                         with consent_box:
                             callout("This is a private repository. Its code would be sent to OpenRouter.", "warn")
@@ -74,7 +84,7 @@ def register(ctx: Ctx) -> None:
                 if not ok and sandbox.value:
                     sandbox.value = False
                 sb_note.set_text("" if ok else str(ctx.status.get("docker_reason") or ""))
-                sb_note.set_visibility(not ok)
+                sb_note_row.set_visibility(not ok)
                 sb_box.set_visibility(bool(sandbox.value))
 
             sandbox.on_value_change(lambda _: sync_sandbox())
@@ -163,6 +173,9 @@ def register(ctx: Ctx) -> None:
                     ui.notify("Cancelling after the current step…")
 
             async def start() -> None:
+                if not (url_in.value or "").strip():
+                    ui.notify("Choose a repository and a pull request first.", type="warning")
+                    return
                 try:
                     ref: PRRef = parse_pr_url(url_in.value)
                 except InvalidPRUrl as exc:
@@ -211,7 +224,57 @@ def register(ctx: Ctx) -> None:
                     else:
                         ui.navigate.to(f"/review/{job.review_id}")
 
+            async def load_repos() -> None:
+                if not svc.config_mgr.get_github_token():
+                    repo_sel.props('placeholder="Sign in to GitHub first (Settings → GitHub)"')
+                    link_exp.set_value(True)
+                    return
+                repo_sel.props('placeholder="Loading your repositories…"')
+                try:
+                    repos = await run.io_bound(lambda: svc.github().list_repos_detailed())
+                except GitHubError as exc:
+                    repo_sel.props(f'placeholder="{exc.message[:80]}"')
+                    link_exp.set_value(True)
+                    return
+                opts = {r["full_name"]: r["full_name"] + ("  ·  private" if r["private"] else "") for r in repos}
+                current = repo_sel.value if repo_sel.value in opts else None
+                if url and not current:
+                    try:
+                        ref0 = parse_pr_url(url)
+                        current = ref0.full_name if ref0.full_name in opts else None
+                    except InvalidPRUrl:
+                        pass
+                repo_sel.set_options(opts, value=current)
+                repo_sel.props(f'placeholder="{len(opts)} repositories — type to search"' if opts else 'placeholder="No repositories found for this account"')
+
+            async def load_prs() -> None:
+                pr_sel.set_options({}, value=None)
+                if not repo_sel.value:
+                    pr_sel.disable()
+                    return
+                pr_sel.props('placeholder="Loading open pull requests…"')
+                try:
+                    prs = await run.io_bound(lambda: svc.github().list_pull_requests(repo_sel.value))
+                except GitHubError as exc:
+                    pr_sel.props(f'placeholder="{exc.message[:80]}"')
+                    return
+                state["prs"] = {p.url: p for p in prs}
+                opts = {p.url: f"#{p.number}  {p.title}" + ("  · draft" if p.draft else "") + f"  ·  {p.author}" for p in prs}
+                pre = url if url in opts else None
+                pr_sel.set_options(opts, value=pre)
+                pr_sel.props(f'placeholder="{len(opts)} open pull requests"' if opts else 'placeholder="No open pull requests in this repository"')
+                pr_sel.enable() if opts else pr_sel.disable()
+
+            async def on_pr(e) -> None:
+                if e.value:
+                    url_in.set_value(e.value)
+                    await check_pr()
+
+            repo_sel.on_value_change(lambda _: load_prs())
+            pr_sel.on_value_change(on_pr)
+
             ui.timer(0.1, lambda: load_models(), once=True)
+            ui.timer(0.15, lambda: load_repos(), once=True)
             if url:
                 ui.timer(0.3, lambda: check_pr(), once=True)
 

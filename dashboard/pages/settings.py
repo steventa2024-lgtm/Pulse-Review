@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import threading
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from core.config import OLLAMA_BASE_URL
 from core.github_client import GitHubError, InvalidPRUrl, parse_repo_name
 from core.github_oauth import DeviceFlow, OAuthError, save_token, scopes_for
 from core.providers import ProviderError
+from core.sandbox import docker_setup
 from core.security import mask_secret
 
 from ..components.kit import (btn, callout, card, field, fmt_ctx, page_header, segmented, select, setting,
@@ -389,12 +391,75 @@ def app_panel(ctx: Ctx, save) -> None:
                 sb.clear()
                 with sb:
                     if ctx.status.get("docker_ok"):
-                        callout("Docker Desktop is running with Linux containers. Sandbox is ready.", "ok")
-                    else:
-                        callout(str(ctx.status.get("docker_reason")), "warn")
-                        ui.markdown("Install **[Docker Desktop](https://www.docker.com/products/docker-desktop/)**, start it, and wait for "
-                                    "“Engine running”. Then press *Check again*. Tip: run `docker pull python:3.11-slim` once.").classes("zp-small")
-                    btn("Check again", "refresh", recheck, kind="secondary").classes("self-start")
+                        callout("Docker Desktop is running with Linux containers. The sandbox is ready.", "ok")
+                        btn("Check again", "refresh", recheck, kind="secondary").classes("self-start")
+                        return
+                    callout(str(ctx.status.get("docker_reason")), "warn")
+                    exe = docker_setup.docker_desktop_exe()
+                    with ui.row().classes("gap-2"):
+                        if exe is not None:
+                            btn("Start Docker Desktop", "play_arrow", start_docker, kind="primary")
+                        elif docker_setup.winget_path():
+                            btn("Install Docker Desktop", "download", install_docker, kind="primary")
+                        else:
+                            btn("Download Docker Desktop", "open_in_new",
+                                lambda: open_external("https://www.docker.com/products/docker-desktop/"), kind="primary")
+                        btn("Check again", "refresh", recheck, kind="secondary")
+                    ui.label("Docker Desktop is free for personal use. The first start can take a minute or two.").classes("zp-hint")
+
+            async def start_docker() -> None:
+                docker_setup.start_docker_desktop()
+                sb.clear()
+                with sb:
+                    with ui.row().classes("items-center gap-2"):
+                        ui.spinner(size="16px")
+                        msg = ui.label("Starting Docker Desktop — waiting for the engine (up to 3 minutes)…").classes("zp-sub zp-small")
+                for _ in range(36):
+                    await asyncio.sleep(5)
+                    await run.io_bound(ctx.check_local_services)
+                    if ctx.status.get("docker_ok"):
+                        break
+                await recheck()
+
+            def install_docker() -> None:
+                with ui.dialog().props("persistent") as d, ui.card().classes("zp-card w-[640px] max-w-full"):
+                    ui.label("Install Docker Desktop").classes("zp-h2")
+                    ui.label("ZeroPulse will run Windows Package Manager (winget) to install Docker Desktop from Docker's official "
+                             "package. Windows will ask for administrator permission. The download is about 500 MB; Docker may also "
+                             "enable WSL 2 and ask you to restart your PC.").classes("zp-sub")
+                    log = ui.log(max_lines=200).classes("w-full h-56 zp-mono")
+                    log.set_visibility(False)
+                    status = ui.label().classes("zp-small")
+                    with ui.row().classes("justify-end w-full gap-2"):
+                        cancel_b = btn("Cancel", on_click=d.close, kind="ghost")
+                        go_b = btn("Install", "download", kind="primary")
+
+                    async def go() -> None:
+                        go_b.disable()
+                        cancel_b.disable()
+                        log.set_visibility(True)
+                        status.set_text("Installing… approve the Windows administrator prompt if it appears.")
+                        lines: list[str] = []
+                        timer = ui.timer(0.5, lambda: [log.push(lines.pop(0)) for _ in range(len(lines))])
+                        try:
+                            code = await run.io_bound(lambda: docker_setup.run_install(lines.append))
+                        except OSError as exc:
+                            code = -1
+                            lines.append(f"Could not start winget: {exc}")
+                        await asyncio.sleep(0.6)
+                        timer.deactivate()
+                        cancel_b.enable()
+                        cancel_b.set_text("Close")
+                        if code == 0:
+                            status.set_text("Docker Desktop is installed. Start it (a restart of Windows may be required first), then press Check again.")
+                            status.classes(replace="zp-small zp-ok")
+                        else:
+                            status.set_text(f"Installation did not finish (exit code {code}). See the output above, or install it manually from docker.com.")
+                            status.classes(replace="zp-small zp-err")
+                        await recheck()
+
+                    go_b.on_click(go)
+                d.open()
 
             ui.timer(0.1, recheck, once=True)
         with setting("Watched repositories", "Polling only — no server is exposed. Analysis can run automatically; publishing never does."):

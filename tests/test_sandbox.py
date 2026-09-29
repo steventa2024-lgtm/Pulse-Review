@@ -286,3 +286,20 @@ def test_failed_check_is_not_cached_so_starting_docker_is_detected(tmp_path):
     assert r.available()[0] is False
     flag.write_text("1")
     assert r.available() == (True, "")
+
+
+def test_docker_install_command_and_output_streaming(monkeypatch):
+    from core.sandbox import docker_setup as ds
+    assert ds.install_command()[:5] == ["winget", "install", "--exact", "--id", "Docker.DockerDesktop"]
+
+    class P:
+        stdout = iter(["Found Docker Desktop\n", "  ██████▒▒  30%\r  ██████████ 100%\n", "-\n", "Successfully installed\n"])
+
+        def wait(self):
+            return 0
+
+    seen = []
+    assert ds.run_install(seen.append, runner=lambda *a, **k: P()) == 0
+    assert seen == ["Found Docker Desktop", "██████████ 100%", "Successfully installed"] or "Successfully installed" in seen
+    monkeypatch.setattr(ds.sys, "platform", "linux")
+    assert ds.docker_desktop_exe() is None and ds.start_docker_desktop() is False

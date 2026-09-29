@@ -28,6 +28,13 @@ FakeProvider.list_models = lambda self: [ModelInfo(id="qwen3-coder:30b", is_free
 
 SUMMARY = {"summary": "Final summary of the discount change.", "overall_risk": "medium", "issues": []}
 gh, pull = make_gh()
+from datetime import datetime, timezone  # noqa: E402
+from types import SimpleNamespace as _NS  # noqa: E402
+
+gh.repo.pushed_at = datetime(2026, 9, 1, tzinfo=timezone.utc)
+gh.repo.get_pulls = lambda state="open", sort="updated", direction="desc": [_NS(
+    number=7, title=pull.title, user=pull.user, html_url=pull.html_url, head=pull.head,
+    updated_at=datetime(2026, 9, 2, tzinfo=timezone.utc), draft=False)]
 AppServices.github = lambda self: GitHubClient("t", gh=gh)
 AppServices.provider = lambda self, provider=None, model=None: FakeProvider([GOOD_REVIEW, SUMMARY, GOOD_TEST], model=model or "fake-model")
 AppServices.sandbox = lambda self: UnavailableRunner()

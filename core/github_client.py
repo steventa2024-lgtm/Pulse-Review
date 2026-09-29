@@ -207,6 +207,34 @@ class GitHubClient:
         except Exception as exc:  # noqa: BLE001
             raise _map_exc(exc) from exc
 
+    def list_repos_detailed(self, limit: int = 300) -> list[dict[str, Any]]:
+        """Repositories the signed-in account can access (owned, collaborator, organisation), most recently pushed first."""
+        if not self._token:
+            return []
+        try:
+            out: list[dict[str, Any]] = []
+            for r in self.gh.get_user().get_repos(sort="pushed"):
+                out.append({"full_name": r.full_name, "private": bool(r.private),
+                            "pushed_at": r.pushed_at.isoformat() if getattr(r, "pushed_at", None) else ""})
+                if len(out) >= limit:
+                    break
+            return out
+        except Exception as exc:  # noqa: BLE001
+            raise _map_exc(exc) from exc
+
+    def list_pull_requests(self, full_name: str, state: str = "open", limit: int = 100) -> list[OpenPR]:
+        try:
+            out: list[OpenPR] = []
+            for p in self.gh.get_repo(full_name).get_pulls(state=state, sort="updated", direction="desc"):
+                out.append(OpenPR(number=p.number, title=p.title or "", author=p.user.login if p.user else "",
+                                  url=p.html_url, head_sha=p.head.sha, updated_at=p.updated_at.isoformat() if p.updated_at else "",
+                                  draft=bool(getattr(p, "draft", False))))
+                if len(out) >= limit:
+                    break
+            return out
+        except Exception as exc:  # noqa: BLE001
+            raise _map_exc(exc) from exc
+
     # -- PR retrieval -----------------------------------------------------------------
     def fetch_pr(self, ref: PRRef) -> PRData:
         try:

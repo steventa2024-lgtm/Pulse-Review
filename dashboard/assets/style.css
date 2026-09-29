@@ -181,3 +181,17 @@ a { color: var(--zp-accent-2); text-decoration: none; } a:hover { text-decoratio
 .text-zpsegtext { color: #dbe8ff !important; }
 .q-btn-toggle .q-btn:not(.bg-zpseg):hover { color: var(--zp-text) !important; background: var(--zp-hover) !important; }
 .q-expansion-item .q-item__label { font-weight: 600; font-size: 13.5px; }
+.zp-reviews .q-table { table-layout: fixed; width: 100%; }
+.zp-reviews tbody tr { cursor: pointer; height: 58px; }
+.zp-reviews th:nth-child(1), .zp-reviews td:nth-child(1) { width: auto; }
+.zp-reviews th:nth-child(2), .zp-reviews td:nth-child(2) { width: 200px; }
+.zp-reviews th:nth-child(3), .zp-reviews td:nth-child(3) { width: 90px; }
+.zp-reviews th:nth-child(4), .zp-reviews td:nth-child(4) { width: 120px; }
+.zp-reviews th:nth-child(5), .zp-reviews td:nth-child(5) { width: 150px; }
+.zp-reviews th:nth-child(6), .zp-reviews td:nth-child(6) { width: 76px; }
+.zp-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zp-cell-pr { max-width: 0; } .zp-cell-title { font-weight: 550; }
+.zp-row-del { color: var(--zp-muted) !important; opacity: 0; transition: opacity .12s; }
+.zp-reviews tbody tr:hover .zp-row-del { opacity: 1; } .zp-row-del:hover { color: var(--zp-red) !important; }
+.q-table__middle { overflow-x: hidden; }
+@media (max-width: 1100px) { .zp-reviews th:nth-child(2), .zp-reviews td:nth-child(2) { display: none; } }
