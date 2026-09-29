@@ -57,6 +57,12 @@ class AppServices:
                               db=self.db if persist else None, sandbox=self.sandbox() if options.run_sandbox else None,
                               progress=progress, cancel=cancel)
 
+    def audit_pipeline(self, options, *, provider: str | None = None, model: str | None = None,
+                       progress: ProgressCb | None = None, cancel: threading.Event | None = None):
+        from .code_audit import CodeAuditPipeline
+        return CodeAuditPipeline(github=self.github(), provider=self.provider(provider, model), options=options,
+                                 db=self.db, progress=progress, cancel=cancel)
+
     def publisher(self) -> Publisher:
         return Publisher(self.github(), self.db)
 

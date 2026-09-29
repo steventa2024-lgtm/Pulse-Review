@@ -144,3 +144,21 @@ def test_invalid_url_gives_clear_error_in_ui(server, page):
     page.get_by_placeholder("https://github.com/owner/repo/pull/123").fill("https://evil.example.com/a/b/pull/1")
     page.get_by_role("button", name="Look up").click()
     page.wait_for_selector("text=Only github.com pull-request URLs are supported.", timeout=5000)
+
+
+def test_code_reviewer_repo_scope_and_breakdown(server, page):
+    page.goto(server + "/code")
+    page.wait_for_timeout(1200)
+    page.locator(".q-select").nth(0).click()
+    page.locator(".q-menu .q-item", has_text="acme/shop").click()
+    page.wait_for_selector(".q-tree__node-header", timeout=10000)
+    page.locator(".q-tree__node-header", has_text="app").first.click()
+    page.wait_for_selector("text=Folder  app/", timeout=5000)
+    page.get_by_role("button", name="Run code review").click()
+    page.wait_for_url("**/code/*", timeout=30000)
+    page.wait_for_selector("text=Breakdown", timeout=10000)
+    body = page.inner_text("body")
+    assert "Possible leaked secret (github token)" in body and "Leaked secrets & API keys" in body
+    assert "OVERALL HEALTH" in body.upper() and "grade" in body
+    assert "ghp_" not in body  # the leaked value itself is never shown
+    assert page.errors == []

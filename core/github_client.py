@@ -70,6 +70,10 @@ def parse_repo_name(name: str) -> tuple[str, str]:
     return m.group(1), m.group(2)
 
 
+def _repo_name(ref: "PRRef | str") -> str:
+    return ref if isinstance(ref, str) else ref.full_name
+
+
 def _map_exc(exc: Exception) -> GitHubError:
     if isinstance(exc, GitHubError):
         return exc
@@ -290,10 +294,10 @@ class GitHubClient:
         except Exception as exc:  # noqa: BLE001
             raise _map_exc(exc) from exc
 
-    def get_file_content(self, ref: PRRef, path: str, sha: str, max_bytes: int = 200_000) -> str | None:
+    def get_file_content(self, ref: PRRef | str, path: str, sha: str, max_bytes: int = 200_000) -> str | None:
         """Text of ``path`` at commit ``sha`` (None if missing/binary/too big)."""
         try:
-            c = self.gh.get_repo(ref.full_name).get_contents(path, ref=sha)
+            c = self.gh.get_repo(_repo_name(ref)).get_contents(path, ref=sha)
             if isinstance(c, list) or getattr(c, "size", 0) > max_bytes:
                 return None
             return c.decoded_content.decode("utf-8")
@@ -306,18 +310,51 @@ class GitHubClient:
         except Exception as exc:  # noqa: BLE001
             raise _map_exc(exc) from exc
 
-    def get_repo_tree(self, ref: PRRef, sha: str) -> tuple[list[str], bool]:
+    def get_repo_tree(self, ref: PRRef | str, sha: str) -> tuple[list[str], bool]:
         """(file paths, truncated) at ``sha``. Truncated when GitHub cut the recursive tree."""
         try:
-            t = self.gh.get_repo(ref.full_name).get_git_tree(sha, recursive=True)
+            t = self.gh.get_repo(_repo_name(ref)).get_git_tree(sha, recursive=True)
             paths = [e.path for e in t.tree if getattr(e, "type", "blob") == "blob"]
             return paths, bool(getattr(t, "raw_data", {}).get("truncated", False))
         except Exception as exc:  # noqa: BLE001
             raise _map_exc(exc) from exc
 
-    def download_archive(self, ref: PRRef, sha: str, max_bytes: int = 60_000_000) -> bytes:
+    def get_tree_sizes(self, full_name: str, sha: str) -> tuple[list[tuple[str, int]], bool]:
+        """[(path, size_bytes)] of every file at ``sha`` and whether GitHub truncated the listing."""
+        try:
+            t = self.gh.get_repo(full_name).get_git_tree(sha, recursive=True)
+            items = [(e.path, int(getattr(e, "size", 0) or 0)) for e in t.tree if getattr(e, "type", "blob") == "blob"]
+            return items, bool(getattr(t, "raw_data", {}).get("truncated", False))
+        except Exception as exc:  # noqa: BLE001
+            raise _map_exc(exc) from exc
+
+    def list_branches(self, full_name: str, limit: int = 100) -> tuple[list[str], str]:
+        """(branch names, default branch)."""
+        try:
+            repo = self.gh.get_repo(full_name)
+            names: list[str] = []
+            for b in repo.get_branches():
+                names.append(b.name)
+                if len(names) >= limit:
+                    break
+            default = getattr(repo, "default_branch", "") or (names[0] if names else "")
+            if default and default not in names:
+                names.insert(0, default)
+            return names, default
+        except Exception as exc:  # noqa: BLE001
+            raise _map_exc(exc) from exc
+
+    def resolve_branch(self, full_name: str, branch: str) -> tuple[str, bool]:
+        """(commit sha at the tip of ``branch``, repository is private)."""
+        try:
+            repo = self.gh.get_repo(full_name)
+            return repo.get_branch(branch).commit.sha, bool(repo.private)
+        except Exception as exc:  # noqa: BLE001
+            raise _map_exc(exc) from exc
+
+    def download_archive(self, ref: PRRef | str, sha: str, max_bytes: int = 60_000_000) -> bytes:
         """Download the repository zip at ``sha`` (the host never executes it)."""
-        url = f"{self.api_base_url}/repos/{ref.full_name}/zipball/{sha}"
+        url = f"{self.api_base_url}/repos/{_repo_name(ref)}/zipball/{sha}"
         try:
             with self._http.stream("GET", url, headers=self._headers(), follow_redirects=True) as r:
                 if r.status_code >= 400:
@@ -327,7 +364,7 @@ class GitHubClient:
                 for chunk in r.iter_bytes():
                     buf.write(chunk)
                     if buf.tell() > max_bytes:
-                        raise GitHubError("validation", "Repository archive exceeds the size limit for sandbox testing.")
+                        raise GitHubError("validation", "The repository archive is larger than the download limit.")
                 return buf.getvalue()
         except httpx.HTTPError as exc:
             raise _map_exc(exc) from exc

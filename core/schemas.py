@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 
 Severity = Literal["critical", "high", "medium", "low"]
 Category = Literal[
-    "bug", "security", "performance", "testing", "maintainability", "compatibility", "reliability"
+    "bug", "security", "performance", "testing", "maintainability", "compatibility", "reliability", "secrets"
 ]
 Risk = Literal["low", "medium", "high", "critical"]
 VerificationStatus = Literal["verified", "plausible", "unverified"]
@@ -27,7 +27,8 @@ _CATEGORY_ALIASES = {
     "input validation": "bug", "vulnerability": "security", "test": "testing", "tests": "testing",
     "test coverage": "testing", "style": "maintainability", "readability": "maintainability",
     "code quality": "maintainability", "perf": "performance", "breaking change": "compatibility",
-    "api": "compatibility", "regression": "bug", "concurrency": "reliability",
+    "api": "compatibility", "regression": "bug", "concurrency": "reliability", "secret": "secrets",
+    "leaked secret": "secrets", "credentials": "secrets", "credential": "secrets", "api key": "secrets", "debugging": "bug",
 }
 _SEVERITY_ALIASES = {"blocker": "critical", "major": "high", "moderate": "medium", "minor": "low",
                      "info": "low", "warning": "medium", "error": "high", "nit": "low"}

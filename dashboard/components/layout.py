@@ -14,6 +14,7 @@ from .kit import btn, icon_btn
 NAV = [
     ("dashboard", "Dashboard", "space_dashboard", "/"),
     ("new", "New review", "add_circle_outline", "/review/new"),
+    ("code", "Code reviewer", "policy", "/code"),
     ("history", "Review history", "history", "/history"),
     ("watch", "Watched repositories", "visibility", "/watch"),
     ("testlab", "Test lab", "science", "/testlab"),
@@ -45,10 +46,11 @@ def frame(ctx: Ctx, active: str):
               warning="#d9a13b", info="#4c8dff", dark="#11151c", dark_page="#0b0e13")
     ui.add_head_html('<link rel="stylesheet" href="/assets/style.css"><meta name="color-scheme" content="dark">' + INTERCEPT_JS)
     ctx.refresh_static()
+    ui.html('<div class="zp-backdrop"><i></i><i></i><i></i></div>')  # blurred solid-colour light behind the glass
 
     with ui.header(elevated=False).classes("items-center justify-between px-4 gap-4 no-wrap"):
         with ui.row().classes("items-center gap-3 no-wrap"):
-            ui.image("/assets/icon.png").classes("w-7 h-7")
+            ui.image("/assets/icon.png").classes("w-8 h-8 rounded-lg")
             ui.html('<span class="zp-brand">Zero<b>Pulse</b> <span style="font-weight:500;color:var(--zp-text-2)">PR Review</span></span>')
         with ui.row().classes("items-center gap-2 no-wrap"):
             _status_chip(ctx, "github_text", "github_ok", "hub", "/settings?tab=github")
@@ -58,7 +60,8 @@ def frame(ctx: Ctx, active: str):
             icon_btn("settings", lambda: ui.navigate.to("/settings"), "Settings")
             icon_btn("power_settings_new", _quit_dialog, "Quit ZeroPulse")
 
-    with ui.left_drawer(value=True, fixed=True).props("width=232 breakpoint=900").classes("p-0 column no-wrap"):
+    with ui.left_drawer(value=True, fixed=True).props("width=250 breakpoint=900").classes("p-0"), \
+            ui.column().classes("zp-sidebar no-wrap gap-0"):
         with ui.column().classes("w-full gap-0 px-3 pt-4 flex-1"):
             btn("New review", "add", lambda: ui.navigate.to("/review/new"), kind="primary").classes("w-full mb-3")
             ui.label("Workspace").classes("zp-eyebrow zp-nav-group")

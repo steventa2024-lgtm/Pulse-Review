@@ -67,6 +67,12 @@ The UI server binds to `127.0.0.1` only, on a free port.
 * **Publish**: choose overview or inline mode, untick findings you don't want, *Preview & post…*, edit the text, type
   `owner/repo#N` to confirm. ZeroPulse re-fetches the PR first; if the head commit changed since the review it refuses (stale) and asks for a refreshed review.
   Identical content cannot be posted twice. Reviews are posted as a plain `COMMENT` (never approve / request changes).
+* **Code reviewer**: pick one of your repositories and a branch, browse its file tree, and audit the **whole repository, a folder or a
+  single file**. Choose what to check (security vulnerabilities, leaked secrets & API keys, bugs & debugging, performance,
+  maintainability). Every text file in scope is scanned for credentials deterministically; the most relevant source files are analysed
+  by the model with real line numbers, and each finding is verified against the file. You get an overall health score (0–100, grade
+  A–F), a per-area breakdown, findings with evidence and fixes, "Open line on GitHub", and a downloadable report. The code is read
+  from a zip archive in memory and never executed.
 * **Watched Repositories**: add repos, *Refresh* (uses conditional requests), see New/Updated PRs, *Review now*. Optional polling interval and
   auto-analysis are in Settings; auto-analysis never publishes.
 * **Test Lab**: all generated tests; sandbox status; run/download.

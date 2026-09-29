@@ -20,6 +20,7 @@ class Job:
     provider: str | None
     model: str | None
     steps: dict[str, tuple[str, str]] = field(default_factory=lambda: {k: ("pending", "") for k, _ in STEPS})
+    kind: str = "review"  # review | audit
     cancel: threading.Event = field(default_factory=threading.Event)
     done: bool = False
     error: str | None = None
@@ -64,6 +65,36 @@ class JobManager:
                 if state == "running":
                     job.steps[k] = ("failed" if job.error else "done", detail)
             job.done = True
+
+    def start_audit(self, repo: str, branch: str, scope_kind: str, scope_path: str, options, provider: str | None,
+                    model: str | None) -> Job:
+        from core.code_audit import AUDIT_STEPS
+        job = Job(id=uuid.uuid4().hex[:8], url=f"{repo}@{branch}", provider=provider, model=model, kind="audit",
+                  steps={k: ("pending", "") for k, _ in AUDIT_STEPS})
+        with self._lock:
+            self.jobs[job.id] = job
+
+        def work() -> None:
+            pipe = None
+            try:
+                pipe = self.services.audit_pipeline(options, provider=provider, model=model, progress=job.on_event, cancel=job.cancel)
+                job.review_id, _ = pipe.run(repo, branch, scope_kind, scope_path)
+            except ConsentRequired as exc:
+                job.error, job.error_kind = str(exc), "consent"
+            except ReviewCancelled:
+                job.error, job.error_kind = "Audit cancelled.", "cancelled"
+            except Exception as exc:  # noqa: BLE001
+                job.error, job.error_kind = getattr(exc, "message", None) or str(exc), "failed"
+            finally:
+                if pipe is not None and job.review_id is None:
+                    job.review_id = pipe.audit_id
+                for k, (state, detail) in list(job.steps.items()):
+                    if state == "running":
+                        job.steps[k] = ("failed" if job.error else "done", detail)
+                job.done = True
+
+        threading.Thread(target=work, daemon=True, name=f"audit-{job.id}").start()
+        return job
 
     def get(self, job_id: str) -> Job | None:
         return self.jobs.get(job_id)

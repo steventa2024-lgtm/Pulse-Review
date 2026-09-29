@@ -278,10 +278,10 @@ def register(ctx: Ctx) -> None:
                 ui.timer(0.3, lambda: check_pr(), once=True)
 
 
-def draw_steps(steps: dict[str, tuple[str, str]], box) -> None:
+def draw_steps(steps: dict[str, tuple[str, str]], box, order=None) -> None:
     box.clear()
     with box:
-        for key, label in STEPS:
+        for key, label in (order or STEPS):
             state, detail = steps.get(key, ("pending", ""))
             with ui.element("div").classes("zp-step"):
                 if state == "running":

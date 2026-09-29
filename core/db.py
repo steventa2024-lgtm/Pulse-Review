@@ -102,6 +102,31 @@ MIGRATIONS: list[str] = [
     CREATE INDEX idx_pub_hash ON publications(repo, pr_number, content_hash);
     CREATE TABLE preferences (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     """,
+    # v2 — code audits (Code reviewer) ---------------------------------------------------
+    """
+    CREATE TABLE audits (
+        id TEXT PRIMARY KEY,
+        repo TEXT NOT NULL,
+        ref TEXT NOT NULL,
+        commit_sha TEXT NOT NULL DEFAULT '',
+        scope_kind TEXT NOT NULL DEFAULT 'repo',
+        scope_path TEXT NOT NULL DEFAULT '',
+        provider TEXT NOT NULL DEFAULT '',
+        model TEXT NOT NULL DEFAULT '',
+        depth TEXT NOT NULL DEFAULT 'standard',
+        status TEXT NOT NULL DEFAULT 'running',
+        stage_detail TEXT NOT NULL DEFAULT '',
+        score INTEGER,
+        grade TEXT,
+        findings_count INTEGER NOT NULL DEFAULT 0,
+        summary TEXT NOT NULL DEFAULT '',
+        error TEXT,
+        result_json TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX idx_audits_repo ON audits(repo);
+    """,
 ]
 
 
@@ -252,7 +277,7 @@ class Database:
     def clear_pr_content(self) -> None:
         """Remove stored PR content (diffs, results, findings, artifacts) but keep settings and watches."""
         with self.tx() as c:
-            for t in ("execution_results", "test_artifacts", "findings", "publications", "reviews"):
+            for t in ("execution_results", "test_artifacts", "findings", "publications", "reviews", "audits"):
                 c.execute(f"DELETE FROM {t}")  # fixed table names, no user input
 
     def stats(self) -> dict[str, int]:
@@ -285,7 +310,49 @@ class Database:
                 "UPDATE reviews SET status='failed', error='Application closed before the review finished', "
                 "updated_at=? WHERE status IN ('pending','fetching','analyzing','generating_tests','testing')",
                 (utcnow_iso(),))
+            c.execute("UPDATE audits SET status='failed', error='Application closed before the audit finished' WHERE status='running'")
             return cur.rowcount
+
+    # -- code audits ----------------------------------------------------------------------
+    _AUDIT_COLS = {"commit_sha", "status", "stage_detail", "score", "grade", "findings_count", "summary", "error"}
+
+    def create_audit(self, *, repo: str, ref: str, scope_kind: str, scope_path: str, provider: str, model: str,
+                     depth: str) -> str:
+        aid = uuid.uuid4().hex[:12]
+        now = utcnow_iso()
+        with self.tx() as c:
+            c.execute("INSERT INTO audits (id, repo, ref, scope_kind, scope_path, provider, model, depth, status, created_at, updated_at) "
+                      "VALUES (?,?,?,?,?,?,?,?, 'running', ?, ?)", (aid, repo, ref, scope_kind, scope_path, provider, model, depth, now, now))
+        return aid
+
+    def update_audit(self, aid: str, **fields: Any) -> None:
+        bad = set(fields) - self._AUDIT_COLS
+        if bad:
+            raise ValueError(f"unknown audit columns: {sorted(bad)}")
+        if fields:
+            sets = ", ".join(f"{k} = ?" for k in fields)
+            with self.tx() as c:
+                c.execute(f"UPDATE audits SET {sets}, updated_at = ? WHERE id = ?", (*fields.values(), utcnow_iso(), aid))
+
+    def save_audit_result(self, aid: str, result) -> None:  # noqa: ANN001 - AuditResult (avoid import cycle)
+        with self.tx() as c:
+            c.execute("UPDATE audits SET result_json=?, status='completed', score=?, grade=?, findings_count=?, summary=?, "
+                      "commit_sha=?, updated_at=? WHERE id=?",
+                      (result.model_dump_json(), result.score, result.grade, len(result.issues), result.summary,
+                       result.commit_sha, utcnow_iso(), aid))
+
+    def get_audit(self, aid: str) -> dict[str, Any] | None:
+        rows = self._q("SELECT * FROM audits WHERE id = ?", (aid,))
+        return dict(rows[0]) if rows else None
+
+    def list_audits(self, limit: int = 200) -> list[dict[str, Any]]:
+        return [dict(r) for r in self._q(
+            "SELECT id, repo, ref, scope_kind, scope_path, model, status, score, grade, findings_count, updated_at "
+            "FROM audits ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,))]
+
+    def delete_audit(self, aid: str) -> None:
+        with self.tx() as c:
+            c.execute("DELETE FROM audits WHERE id = ?", (aid,))
 
     # -- execution results ------------------------------------------------------------
     def save_execution(self, rid: str, *, status: str, passed: int | None, failed: int | None,

@@ -39,6 +39,27 @@ AppServices.github = lambda self: GitHubClient("t", gh=gh)
 AppServices.provider = lambda self, provider=None, model=None: FakeProvider([GOOD_REVIEW, SUMMARY, GOOD_TEST], model=model or "fake-model")
 AppServices.sandbox = lambda self: UnavailableRunner()
 
+# Code reviewer: branch + archive for the fake repository
+import io as _io  # noqa: E402
+import zipfile as _zf  # noqa: E402
+
+from tests.fixtures.pr_fixture import FAKE_TOKEN, ORDERS_SRC  # noqa: E402
+
+gh.repo.get_branch = lambda b: _NS(commit=_NS(sha="c" * 40))
+gh.repo.get_branches = lambda: [_NS(name="main"), _NS(name="feature/discount")]
+
+
+def _archive(self, ref, sha, max_bytes=0):
+    buf = _io.BytesIO()
+    with _zf.ZipFile(buf, "w") as z:
+        z.writestr("acme-shop-c0ffee/app/orders.py", ORDERS_SRC)
+        z.writestr("acme-shop-c0ffee/app/auth.py", f'API_TOKEN = "{FAKE_TOKEN}"\ndef login(u, p):\n    return True\n')
+        z.writestr("acme-shop-c0ffee/README.md", "# Shop\n")
+    return buf.getvalue()
+
+
+GitHubClient.download_archive = _archive
+
 
 @app.get("/__test/push")
 def push():
