@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="docs/assets/icon.png" alt="PulseReview app icon" width="96"><br>
-  <b>Local-first AI pull-request reviews · free open-weight models · you approve everything that gets posted</b>
+  <b>Local- AI pull-request reviews · free open-weight models · you approve everything that gets posted</b>
 </p>
 
 # ZeroPulse PR Review Agent (PulseReview)
