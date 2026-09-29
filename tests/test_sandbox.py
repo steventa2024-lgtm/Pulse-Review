@@ -1,6 +1,7 @@
 import io
 import os
 import stat
+import sys
 import threading
 import time
 import zipfile
@@ -36,31 +37,52 @@ def _req(**kw):
     return SandboxRequest(**d)
 
 
+FAKE_DOCKER_PY = r"""
+import os, sys, time
+log, envfile = sys.argv[1], sys.argv[2]
+args = sys.argv[3:]
+with open(log, "a") as f:
+    f.write(" ".join(args) + "\n")
+with open(envfile, "w") as f:
+    f.write("\n".join(f"{k}={v}" for k, v in sorted(os.environ.items())))
+cmd, mode = (args[0] if args else ""), os.environ.get("FAKE_DOCKER_MODE", "")
+if cmd == "info":
+    print(os.environ.get("FAKE_DOCKER_OSTYPE", "linux")); sys.exit(0)
+if cmd == "image":
+    sys.exit(1 if os.environ.get("FAKE_IMAGE") == "missing" else 0)
+if cmd == "run":
+    if mode == "pass": print("2 passed in 0.03s"); sys.exit(0)
+    if mode == "fail": print("1 failed, 1 passed in 0.10s"); sys.exit(1)
+    if mode == "none": print("no tests ran in 0.01s"); sys.exit(5)
+    if mode == "hang": time.sleep(30)
+    if mode == "nomod": print("ModuleNotFoundError: No module named 'pytest'"); sys.exit(1)
+    if mode == "flood":
+        line = "A" * 60 + "\n"
+        sys.stdout.write(line * 50000); sys.exit(0)
+sys.exit(0)
+"""
+
+
+def make_fake_docker(tmp_path: Path):
+    """A stand-in `docker` executable (cross-platform) that logs every invocation. Behaviour via env vars."""
+    log = tmp_path / "docker.log"
+    impl = tmp_path / "fake_docker_impl.py"
+    impl.write_text(FAKE_DOCKER_PY, encoding="utf-8")
+    envfile = tmp_path / "last_env.txt"
+    if sys.platform == "win32":
+        script = tmp_path / "docker.cmd"
+        script.write_text(f'@"{sys.executable}" "{impl}" "{log}" "{envfile}" %*\r\n', encoding="utf-8")
+    else:
+        script = tmp_path / "docker"
+        script.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{impl}" "{log}" "{envfile}" "$@"\n', encoding="utf-8")
+        script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    log.touch()
+    return script, log
+
+
 @pytest.fixture
 def fake_docker(tmp_path):
-    """A stand-in `docker` executable that logs every invocation. Behaviour is chosen via FAKE_DOCKER_MODE."""
-    log = tmp_path / "docker.log"
-    script = tmp_path / "docker"
-    script.write_text(f"""#!/bin/sh
-echo "$@" >> {log}
-env | sort > {tmp_path}/last_env.txt
-case "$1" in
-  info) echo linux; exit 0;;
-  image) [ "$FAKE_IMAGE" = "missing" ] && exit 1; exit 0;;
-  rm) exit 0;;
-  run)
-    case "$FAKE_DOCKER_MODE" in
-      pass) echo "2 passed in 0.03s"; exit 0;;
-      fail) echo "1 failed, 1 passed in 0.10s"; exit 1;;
-      none) echo "no tests ran in 0.01s"; exit 5;;
-      hang) sleep 30;;
-      nomod) echo "ModuleNotFoundError: No module named 'pytest'"; exit 1;;
-      flood) yes AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA | head -c 3000000; exit 0;;
-    esac;;
-esac
-""")
-    script.chmod(script.stat().st_mode | stat.S_IEXEC)
-    return script, log
+    return make_fake_docker(tmp_path)
 
 
 # ------------------------------------------------------------------ parsing: never a false pass
@@ -99,7 +121,7 @@ def test_run_args_contain_every_required_safeguard(tmp_path):
     assert "docker.sock" not in joined and "host" not in args
     mounts = [a for a in args if a.startswith("type=bind")]
     assert len(mounts) == 1 and str(tmp_path) in mounts[0]  # only the disposable work dir
-    assert str(Path.home()) not in joined
+    assert f"source={Path.home()}," not in joined and f"source={Path.home()}/" not in joined  # home itself is never mounted
     assert "--rm" in args
     net = r.build_run_args(name="n", workdir=tmp_path, image="i", command=["x"], network=True, req=_req(), env={})
     assert net[net.index("--network") + 1] == "bridge"
@@ -211,10 +233,9 @@ def test_unavailable_docker_never_claims_execution(tmp_path):
     assert tf.execution_status == "not_run" and tf.artifact_state == "generated"
 
 
-def test_windows_container_mode_is_rejected(tmp_path):
-    s = tmp_path / "docker"
-    s.write_text("#!/bin/sh\n[ \"$1\" = info ] && echo windows\nexit 0\n")
-    s.chmod(0o755)
+def test_windows_container_mode_is_rejected(tmp_path, monkeypatch):
+    s, _ = make_fake_docker(tmp_path)
+    monkeypatch.setenv("FAKE_DOCKER_OSTYPE", "windows")
     ok, reason = DockerRunner(docker_bin=str(s)).available()
     assert not ok and "Linux containers" in reason
 
