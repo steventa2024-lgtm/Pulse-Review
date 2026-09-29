@@ -60,3 +60,30 @@ class AppServices:
 
     def watcher(self) -> WatchService:
         return WatchService(self.github(), self.db)
+
+
+def run_sandbox_for_review(svc: AppServices, review_id: str, *, install_deps: bool = False, allow_pull: bool = False,
+                           cancel: threading.Event | None = None):
+    """Execute a stored review's generated test in the sandbox and persist the honest result."""
+    from .review_pipeline import apply_sandbox_result
+    from .sandbox.runner import UNAVAILABLE_MESSAGE, SandboxRequest, SandboxResult
+    from .schemas import PRData
+
+    result = svc.db.get_result(review_id)
+    pr_json = svc.db.get_pr_json(review_id)
+    if not result or not result.test_file or not pr_json:
+        return SandboxResult("error", output="This review has no generated test file.", runner="none")
+    tf, pr = result.test_file, PRData.model_validate_json(pr_json)
+    runner = svc.sandbox()
+    ok, reason = runner.available()
+    if not ok:
+        return SandboxResult("unavailable", output=reason or UNAVAILABLE_MESSAGE, runner=runner.name)
+    archive = svc.github().download_archive(pr.ref, pr.head_sha)
+    res = runner.run(SandboxRequest(repo_zip=archive, test_path=tf.filename, test_content=tf.content, language=tf.language,
+                                    framework=tf.framework, install_dependencies=install_deps, allow_pull=allow_pull), cancel)
+    apply_sandbox_result(tf, res)
+    if res.status != "unavailable":
+        svc.db.save_result(review_id, result)
+        svc.db.save_execution(review_id, status=tf.execution_status, passed=tf.tests_passed, failed=tf.tests_failed,
+                              duration=tf.duration_seconds, output=tf.execution_output, runner=runner.name)
+    return res
