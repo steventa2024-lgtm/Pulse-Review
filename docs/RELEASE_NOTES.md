@@ -1,6 +1,6 @@
-## ZeroPulse PR Review Agent — v0.1.0 beta
+## ZeroPulse PR Review Agent — v0.1.1 beta
 
-First public beta of the Windows desktop app. **Beta software:** expect rough edges and please report issues.
+Beta of the Windows desktop app. **Beta software:** expect rough edges and please report issues.
 
 ### Download
 - `ZeroPulsePRReview.exe` — single-file Windows 10/11 (x64) executable, no Python needed.
@@ -8,6 +8,12 @@ First public beta of the Windows desktop app. **Beta software:** expect rough ed
 
 The exe is not code-signed yet, so Windows SmartScreen may warn on first launch (More info → Run anyway).
 It opens in a native window when the Microsoft Edge WebView2 runtime is present, otherwise in your default browser.
+
+### New in 0.1.1
+- Bring your own setup: review **public pull requests without signing in to GitHub** — just pick a model and paste the link
+- Works fully offline-from-the-cloud with **Ollama** (no API keys at all)
+- First-run "Get started" checklist on the dashboard and a one-click link to create a GitHub token
+- Security audit of the repository: no API keys, tokens or OAuth client IDs are included in the source or the exe; every user adds their own
 
 ### What's included
 - AI pull-request reviews with findings verified against the real diff, risk rating and suggested fixes

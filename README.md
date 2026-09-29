@@ -4,12 +4,12 @@
 
 <p align="center">
   <img src="docs/assets/icon.png" alt="PulseReview app icon" width="96"><br>
-  <b>Local- AI pull-request reviews · free open-weight models · you approve everything that gets posted</b>
+  <b>Local AI pull-request reviews · free open-weight models · you approve everything that gets posted</b>
 </p>
 
 # ZeroPulse PR Review Agent (PulseReview)
 
-**[⬇ Download for Windows (v0.1.0 beta)](https://github.com/steventa2024-lgtm/Pulse-Review/releases/latest)** ·
+**[⬇ Download for Windows (v0.1.1 beta)](https://github.com/steventa2024-lgtm/Pulse-Review/releases/latest)** ·
 [Releases](https://github.com/steventa2024-lgtm/Pulse-Review/releases) · Showcase website source: [`website/`](website/)
 
 A local desktop companion for GitHub developers: sign in with GitHub, choose an open-weight model, pick a repository and pull request, and

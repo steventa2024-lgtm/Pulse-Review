@@ -13,3 +13,11 @@ dist/
 .pytest_cache/
 .coverage
 *.log
+
+# Local deploy/tooling state
+.vercel/
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/

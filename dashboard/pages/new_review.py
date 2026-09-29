@@ -181,8 +181,9 @@ def register(ctx: Ctx) -> None:
                     ui.notify(str(exc), type="negative")
                     return
                 if not svc.config_mgr.get_github_token():
-                    ui.notify("Sign in to GitHub first (Settings → GitHub).", type="warning")
-                    return
+                    # Public pull requests can be read anonymously (60 GitHub API requests/hour).
+                    ui.notify("Not signed in to GitHub — reviewing as a public pull request. "
+                              "Sign in (Settings → GitHub) for private repos and higher rate limits.", type="info")
                 p = prov.value
                 if p == "openrouter" and not svc.config_mgr.get_openrouter_key():
                     ui.notify("Add your OpenRouter API key in Settings → AI models.", type="warning")
@@ -225,7 +226,7 @@ def register(ctx: Ctx) -> None:
 
             async def load_repos() -> None:
                 if not svc.config_mgr.get_github_token():
-                    repo_sel.props('placeholder="Sign in to GitHub first (Settings → GitHub)"')
+                    repo_sel.props('placeholder="Sign in to GitHub to pick from your repos — or paste a public PR link below"')
                     link_exp.set_value(True)
                     return
                 repo_sel.props('placeholder="Loading your repositories…"')

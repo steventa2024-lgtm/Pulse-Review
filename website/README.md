@@ -33,7 +33,7 @@ The site is then served at `https://steventa2024-lgtm.github.io/Pulse-Review/`
 
 `src/hooks/useRelease.ts` reads the newest published GitHub release (pre-releases included) from the GitHub API and links to
 its `.exe` asset, showing the real version, size and date. If the API is unreachable it falls back to the
-`FALLBACK_DOWNLOAD_URL` in `src/config.ts` (currently the `v0.1.0beta` asset). New releases are picked up automatically —
+`FALLBACK_DOWNLOAD_URL` in `src/config.ts` (currently the `v0.1.1beta` asset). New releases are picked up automatically —
 publish them with `.github/workflows/release.yml`.
 
 ## Screenshots

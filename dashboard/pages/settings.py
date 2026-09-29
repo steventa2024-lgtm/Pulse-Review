@@ -107,7 +107,9 @@ def github_panel(ctx: Ctx, save) -> None:
                 await refresh_account()
 
             btn("Use token", "key", save_pat, kind="secondary")
-        ui.label("Fine-grained token permissions: Metadata, Contents and Pull requests (read). Add Pull requests (write) to publish.").classes("zp-hint")
+        ui.markdown("**[Create a fine-grained token on GitHub](https://github.com/settings/personal-access-tokens/new)** — "
+                    "permissions: Metadata, Contents and Pull requests (read). Add Pull requests (write) to publish. "
+                    "Public pull requests can be reviewed without any token.").classes("zp-hint")
 
     state = {"info": None, "error": None}
 
