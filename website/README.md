@@ -19,15 +19,7 @@ npm run build      # tsc -b && vite build  → website/dist
 npm run preview    # serve the production build on http://localhost:4173
 ```
 
-The build uses a relative base (`./`), so `dist/` can be hosted at a domain root, under `/Pulse-Review/` on GitHub Pages,
-or on any static host (Netlify, Vercel, Cloudflare Pages, S3…).
-
-## Deploy (GitHub Pages)
-
-`.github/workflows/website.yml` builds and deploys on every push that touches `website/`.
-One-time setup: **Repository → Settings → Pages → Build and deployment → Source: GitHub Actions**.
-Live site: https://pulse-review.vercel.app (Vercel, see below).
-(update the `og:image` URLs in `index.html` if you use a custom domain).
+The build uses a relative base (`./`), so `dist/` works on any static host.
 
 ## Download button
 
