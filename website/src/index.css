@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+/* Design tokens taken from the desktop app (dashboard/assets/style.css). Flat colours only — no gradients. */
+@theme {
+  --color-bg: #030816;
+  --color-surface: #0a1630;
+  --color-surface-2: #0e1d3d;
+  --color-line: rgb(98 156 255 / 0.17);
+  --color-line-strong: rgb(118 172 255 / 0.3);
+  --color-accent: #2f7cff;
+  --color-accent-hover: #4a8dff;
+  --color-accent-soft: rgb(59 140 255 / 0.14);
+  --color-accent-2: #6db3ff;
+  --color-ink: #eaf1ff;
+  --color-ink-2: #b7c6e4;
+  --color-muted: #8494b6;
+  --color-ok: #2ee6a0;
+  --color-bad: #ff5a73;
+  --color-warn: #ffb547;
+  --font-sans: "Inter Variable", "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+}
+
+html { scroll-behavior: smooth; scroll-padding-top: 76px; background: var(--color-bg); }
+body { background: var(--color-bg); color: var(--color-ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+::selection { background: rgb(59 140 255 / 0.4); }
+:focus-visible { outline: 2px solid var(--color-accent-2); outline-offset: 3px; border-radius: 8px; }
+
+/* entrance + scroll reveal */
+@keyframes fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes reveal-app { from { opacity: 0; transform: translateY(28px) scale(0.985); } to { opacity: 1; transform: none; } }
+.enter { opacity: 0; animation: fade-up .7s cubic-bezier(.2,.7,.2,1) forwards; }
+.enter-app { opacity: 0; animation: reveal-app 1s cubic-bezier(.2,.7,.2,1) .55s forwards; }
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+.reveal.is-visible { opacity: 1; transform: none; }
+@keyframes shot-in { from { opacity: 0; transform: scale(0.99); } to { opacity: 1; transform: none; } }
+.shot-in { animation: shot-in .35s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .enter, .enter-app, .reveal, .shot-in { animation: none !important; opacity: 1 !important; transform: none !important; transition: none !important; }
+}

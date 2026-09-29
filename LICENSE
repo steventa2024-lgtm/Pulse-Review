@@ -1,0 +1,36 @@
+PulseReview Beta License
+
+Copyright (c) 2026 ZeroPulse. All rights reserved.
+
+PulseReview is developed and licensed by ZeroPulse.
+
+1. Permission. You may download the official PulseReview builds published by
+   ZeroPulse (https://pulse-review.vercel.app and the GitHub Releases of
+   steventa2024-lgtm/Pulse-Review) and use them free of charge, for personal or
+   work purposes, while the software is in beta.
+
+2. Restrictions. Unless ZeroPulse gives you written permission, you may not:
+   (a) redistribute, sell, rent, sublicense or re-host PulseReview or its
+       source code;
+   (b) publish modified versions or derivative works of PulseReview;
+   (c) use the names "PulseReview" or "ZeroPulse", or their logos, for any
+       other product.
+
+3. Third-party components. PulseReview includes open-source components that
+   remain under their own licenses. Nothing in this license limits your rights
+   under those licenses.
+
+4. Your data. PulseReview runs on your computer. Your code, API keys and tokens
+   stay on your machine and are sent only to the services you choose to connect
+   (GitHub, OpenRouter, a local Ollama). ZeroPulse does not collect them.
+
+5. No warranty. PulseReview is beta software provided "AS IS", without warranty
+   of any kind, express or implied, including merchantability, fitness for a
+   particular purpose and non-infringement. AI-generated reviews can be wrong;
+   check them before acting on them.
+
+6. Limitation of liability. To the maximum extent permitted by law, ZeroPulse
+   is not liable for any claim, damages or other liability arising from the use
+   of, or inability to use, PulseReview.
+
+Contact: open an issue at https://github.com/steventa2024-lgtm/Pulse-Review/issues
