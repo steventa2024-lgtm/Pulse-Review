@@ -16,7 +16,15 @@ from nicegui import app  # noqa: E402
 from core.github_client import GitHubClient  # noqa: E402
 from core.sandbox.runner import UnavailableRunner  # noqa: E402
 from core.services import AppServices  # noqa: E402
+from core.providers.base import ModelInfo  # noqa: E402
 from tests.fixtures.pr_fixture import GOOD_REVIEW, GOOD_TEST, FakeProvider, make_gh  # noqa: E402
+
+_MODELS = [ModelInfo(id="qwen/qwen3-coder-next:free", context_length=262144, is_free=True, recommended=True),
+           ModelInfo(id="cohere/north-mini-code:free", context_length=256000, is_free=True, recommended=True),
+           ModelInfo(id="qwen/qwen3.8-27b:free", context_length=262144, is_free=True, recommended=True),
+           ModelInfo(id="google/gemma-4-31b-it:free", context_length=262144, is_free=True)]
+FakeProvider.review_models = lambda self, force=False: _MODELS
+FakeProvider.list_models = lambda self: [ModelInfo(id="qwen3-coder:30b", is_free=True)]
 
 SUMMARY = {"summary": "Final summary of the discount change.", "overall_risk": "medium", "issues": []}
 gh, pull = make_gh()

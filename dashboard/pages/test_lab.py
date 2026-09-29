@@ -7,6 +7,7 @@ from nicegui import run, ui
 from core.github_client import GitHubError
 from core.services import run_sandbox_for_review
 
+from ..components.kit import page_header
 from ..components.layout import frame
 from ..components.widgets import copy_button, download_button, fmt_time, pill
 from .review_detail import LANG_MAP
@@ -17,18 +18,18 @@ def register(ctx) -> None:
     def test_lab():
         svc = ctx.services
         with frame(ctx, "testlab"):
-            ui.label("Test Lab").classes("text-2xl font-semibold")
+            page_header("Test lab", "Generated tests across your reviews. They count as executed only after a real sandbox run.")
             with ui.element("div").classes("zp-card w-full"):
                 ui.label("Sandbox status").classes("zp-card-title mb-1")
-                status = ui.label("Checking Docker…").classes("text-sm")
+                status = ui.label("Checking Docker…").classes("zp-small")
 
                 async def check() -> None:
                     ok, reason = await run.io_bound(svc.sandbox().available)
                     status.set_text("Docker (Linux containers) is ready. Tests run offline with CPU/memory limits and no host access." if ok else reason)
-                    status.classes(replace="text-sm " + ("text-green-400" if ok else "text-amber-400"))
+                    status.classes(replace="zp-small " + ("zp-ok" if ok else "zp-warn"))
 
                 ui.timer(0.1, check, once=True)
-                ui.label("Generated tests are proposals. They are marked 'executed' only after a real sandbox run.").classes("zp-muted text-xs")
+                ui.label("Generated tests are proposals. They are marked 'executed' only after a real sandbox run.").classes("zp-muted zp-xs")
             arts = svc.db.list_test_artifacts()
             if not arts:
                 with ui.element("div").classes("zp-card w-full"):
@@ -42,13 +43,13 @@ def register(ctx) -> None:
                 with detail:
                     with ui.element("div").classes("zp-card w-full"):
                         with ui.row().classes("items-center justify-between w-full"):
-                            ui.label(a["filename"]).classes("font-semibold zp-mono")
+                            ui.label(a["filename"]).classes("zp-h3 zp-mono")
                             with ui.row().classes("gap-2"):
                                 pill(a["framework"], "low")
                                 if tf:
                                     pill("artifact: " + tf.artifact_state, {"generated": "gray", "verified": "medium", "executed": "ok"}[tf.artifact_state])
                                     pill("execution: " + tf.execution_status.replace("_", " "), {"not_run": "gray", "passed": "ok", "failed": "critical", "error": "medium"}[tf.execution_status])
-                        ui.label(a["purpose"]).classes("zp-muted text-sm")
+                        ui.label(a["purpose"]).classes("zp-muted zp-small")
                         ui.code(a["content"], language=LANG_MAP.get(a["language"], "text")).classes("w-full mt-2")
                         if tf and tf.execution_output:
                             ui.label("Last execution output").classes("zp-card-title mt-2")
@@ -56,11 +57,11 @@ def register(ctx) -> None:
                         with ui.row().classes("gap-1 mt-2"):
                             copy_button(a["content"], "Copy")
                             download_button(a["content"], Path(a["filename"]).name, "Download")
-                            ui.button("Open review", icon="open_in_new", on_click=lambda: ui.navigate.to(f"/review/{a['review_id']}")).props("flat dense no-caps size=sm")
-                            rb = ui.button("Run in Sandbox", icon="play_circle", on_click=lambda: run_it(a)).props("unelevated dense no-caps color=primary size=sm")
+                            ui.button("Open review", icon="open_in_new", on_click=lambda: ui.navigate.to(f"/review/{a['review_id']}"), color=None).props("flat no-caps").classes("zp-btn-ghost zp-btn-sm")
+                            rb = ui.button("Run in Sandbox", icon="play_circle", on_click=lambda: run_it(a)).props("unelevated no-caps color=primary").classes("zp-btn-sm")
                             if not ctx.status.get("docker_ok"):
                                 rb.disable()
-                                ui.label("Sandbox unavailable — generated test has not been executed.").classes("text-amber-400 text-xs")
+                                ui.label("Sandbox unavailable — generated test has not been executed.").classes("zp-warn zp-xs")
 
             async def run_it(a: dict) -> None:
                 ui.notify("Running in sandbox (dependencies are not installed unless the image already has them)…")
@@ -80,5 +81,5 @@ def register(ctx) -> None:
                 rows = [{**a, "when": fmt_time(a["created_at"]), "id": a["id"]} for a in arts]
                 with ui.element("div").classes("zp-card w-full"):
                     ui.table(columns=cols, rows=rows, row_key="id", pagination=8, selection="single",
-                             on_select=lambda e: show(e.selection[0]) if e.selection else None).props("flat dense").classes("w-full")
+                             on_select=lambda e: show(e.selection[0]) if e.selection else None).props("flat no-caps").classes("zp-btn-ghost").classes("w-full")
                 show(arts[0])

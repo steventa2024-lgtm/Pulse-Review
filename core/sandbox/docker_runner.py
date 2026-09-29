@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -26,6 +27,26 @@ log = logging.getLogger(__name__)
 _SECRET_ENV = re.compile(r"(?i)(token|secret|passw|api[_-]?key|credential|auth)")
 
 
+_NO_WINDOW = {"creationflags": 0x08000000} if sys.platform == "win32" else {}  # CREATE_NO_WINDOW: no console flashes
+
+
+def find_docker() -> str | None:
+    """docker on PATH, else the standard Docker Desktop install location (PATH is often stale after installing)."""
+    found = shutil.which("docker")
+    if found:
+        return found
+    if sys.platform == "win32":
+        for base in (os.environ.get("ProgramFiles", r"C:\Program Files"), os.environ.get("ProgramW6432", "")):
+            cand = Path(base) / "Docker" / "Docker" / "resources" / "bin" / "docker.exe"
+            if base and cand.is_file():
+                return str(cand)
+    elif sys.platform == "darwin":
+        cand = Path("/Applications/Docker.app/Contents/Resources/bin/docker")
+        if cand.is_file():
+            return str(cand)
+    return None
+
+
 def host_env_for_docker_cli() -> dict[str, str]:
     """Environment for the docker CLI itself: no credential-looking variables."""
     return {k: v for k, v in os.environ.items() if not _SECRET_ENV.search(k)}
@@ -35,32 +56,47 @@ class DockerRunner(SandboxRunner):
     name = "docker"
 
     def __init__(self, docker_bin: str | None = None, workdir_root: Path | None = None) -> None:
-        self.docker = docker_bin or shutil.which("docker") or "docker"
+        self.docker = docker_bin or find_docker() or "docker"
         self.workdir_root = workdir_root
         self._availability: tuple[bool, str] | None = None
 
     # -- helpers ----------------------------------------------------------------------
     def _run_cli(self, args: list[str], timeout: float = 15) -> subprocess.CompletedProcess[str]:
         return subprocess.run([self.docker, *args], capture_output=True, text=True, timeout=timeout,
-                              env=host_env_for_docker_cli())
+                              env=host_env_for_docker_cli(), encoding="utf-8", errors="replace", **_NO_WINDOW)
 
     def available(self) -> tuple[bool, str]:
+        """(usable, reason). A failed check is not cached, so starting Docker later is picked up."""
         if self._availability is not None and self._availability[0]:
             return self._availability
-        if not shutil.which(self.docker):
-            self._availability = (False, UNAVAILABLE_MESSAGE)
-            return self._availability
+        if not (shutil.which(self.docker) or Path(self.docker).is_file()):
+            return self._set(False, "Docker is not installed (or not found). Install Docker Desktop, then restart ZeroPulse. "
+                                    + UNAVAILABLE_MESSAGE)
         try:
-            p = self._run_cli(["info", "--format", "{{.OSType}}"], timeout=10)
-        except (subprocess.SubprocessError, OSError):
-            self._availability = (False, UNAVAILABLE_MESSAGE)
-            return self._availability
+            p = self._run_cli(["info", "--format", "{{.OSType}}"], timeout=25)
+        except subprocess.TimeoutExpired:
+            return self._set(False, "Docker did not respond (the engine may still be starting). " + UNAVAILABLE_MESSAGE)
+        except (subprocess.SubprocessError, OSError) as exc:
+            return self._set(False, f"Could not run Docker ({exc}). " + UNAVAILABLE_MESSAGE)
+        out = (p.stdout or "").strip().lower()
+        err = (p.stderr or "").strip()
         if p.returncode != 0:
-            self._availability = (False, UNAVAILABLE_MESSAGE)
-        elif p.stdout.strip() != "linux":
-            self._availability = (False, "Docker is in Windows-container mode. Switch to Linux containers. " + UNAVAILABLE_MESSAGE)
-        else:
-            self._availability = (True, "")
+            low = err.lower()
+            if "permission denied" in low or "access is denied" in low:
+                why = "Docker refused access. Make sure your user is allowed to use Docker (docker-users group)."
+            elif any(k in low for k in ("cannot connect", "error during connect", "is the docker daemon running",
+                                        "pipe/docker", "dockerdesktoplinuxengine", "the system cannot find the file")):
+                why = "Docker Desktop is installed but its engine is not running. Start Docker Desktop and wait until it says “Engine running”."
+            else:
+                why = f"Docker returned an error: {err[:200] or 'exit code ' + str(p.returncode)}."
+            return self._set(False, why + " " + UNAVAILABLE_MESSAGE)
+        if out != "linux":
+            return self._set(False, "Docker is in Windows-containers mode. Right-click the Docker tray icon → “Switch to Linux containers…”. "
+                                    + UNAVAILABLE_MESSAGE)
+        return self._set(True, "")
+
+    def _set(self, ok: bool, reason: str) -> tuple[bool, str]:
+        self._availability = (ok, reason)
         return self._availability
 
     def image_present(self, image: str) -> bool:
@@ -94,7 +130,7 @@ class DockerRunner(SandboxRunner):
               cancel: threading.Event | None) -> tuple[int | None, str, str]:
         """Run the container; returns (exit_code, output, outcome) where outcome in ok|timeout|cancelled."""
         proc = subprocess.Popen([self.docker, *args], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                env=host_env_for_docker_cli())
+                                env=host_env_for_docker_cli(), **_NO_WINDOW)
         chunks: list[bytes] = []
         size = 0
 

@@ -59,8 +59,9 @@ def page(server):
 
 
 def test_all_pages_render_without_js_errors(server, page):
-    for path, text in [("/", "Dashboard"), ("/review/new", "New Review"), ("/history", "Review History"),
-                       ("/watch", "Watched Repositories"), ("/testlab", "Test Lab"), ("/settings", "Settings")]:
+    for path, text in [("/", "Dashboard"), ("/review/new", "New review"), ("/history", "Review history"),
+                       ("/watch", "Watched repositories"), ("/testlab", "Test lab"), ("/settings", "Settings"),
+                       ("/settings?tab=ai", "OpenRouter"), ("/settings?tab=review", "Depth"), ("/settings?tab=app", "Test sandbox")]:
         page.goto(server + path)
         page.wait_for_selector(f"text={text}", timeout=10000)
     assert page.errors == []
@@ -73,9 +74,9 @@ def test_server_is_bound_to_loopback_only(server):
 
 def test_review_flow_progress_results_and_manual_publish(server, page):
     page.goto(server + "/review/new")
-    page.fill("input[aria-label='Pull-request URL']", URL)
-    page.fill("input[aria-label='Or enter a model id manually']", "qwen/qwen3-coder:free")
-    page.click("text=START REVIEW")
+    page.get_by_placeholder("https://github.com/owner/repo/pull/123").fill(URL)
+    page.wait_for_timeout(800)  # model list loads
+    page.get_by_role("button", name="Start review").click()
     # real pipeline stage labels appear (no percentages)
     page.wait_for_selector("text=Analyzing code changes", timeout=10000)
     page.wait_for_url("**/review/*", timeout=30000)
@@ -105,9 +106,9 @@ def test_review_flow_progress_results_and_manual_publish(server, page):
 
 def test_stale_pr_blocks_publishing_in_ui(server, page):
     page.goto(server + "/review/new")
-    page.fill("input[aria-label='Pull-request URL']", URL)
-    page.fill("input[aria-label='Or enter a model id manually']", "qwen/qwen3-coder:free")
-    page.click("text=START REVIEW")
+    page.get_by_placeholder("https://github.com/owner/repo/pull/123").fill(URL)
+    page.wait_for_timeout(800)  # model list loads
+    page.get_by_role("button", name="Start review").click()
     page.wait_for_url("**/review/*", timeout=30000)
     page.wait_for_selector("text=Detected issues", timeout=10000)
     httpx.get(server + "/__test/push")  # author pushes a new commit after the review
@@ -130,6 +131,6 @@ def test_history_persists_and_delete_works(server, page):
 
 def test_invalid_url_gives_clear_error_in_ui(server, page):
     page.goto(server + "/review/new")
-    page.fill("input[aria-label='Pull-request URL']", "https://evil.example.com/a/b/pull/1")
-    page.click("button:has-text('Check')")
+    page.get_by_placeholder("https://github.com/owner/repo/pull/123").fill("https://evil.example.com/a/b/pull/1")
+    page.get_by_role("button", name="Look up").click()
     page.wait_for_selector("text=Only github.com pull-request URLs are supported.", timeout=5000)

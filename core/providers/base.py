@@ -51,6 +51,8 @@ class ModelInfo:
     supported_parameters: list[str] = field(default_factory=list)
     supports_structured_output: bool | None = None
     note: str = ""
+    text_output: bool = True  # False for image/audio/music generators, which cannot review code
+    recommended: bool = False
 
 
 @dataclass

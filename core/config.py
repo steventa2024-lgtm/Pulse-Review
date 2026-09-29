@@ -16,6 +16,9 @@ from .security import SecretStore, default_secret_store, load_dotenv
 log = logging.getLogger(__name__)
 
 GITHUB_SECRET_REF = "github_token"
+GITHUB_REFRESH_REF = "github_refresh_token"
+# Optionally bake in the client ID of your own GitHub OAuth App (device flow enabled). Not a secret.
+DEFAULT_GITHUB_CLIENT_ID = ""
 OPENROUTER_SECRET_REF = "openrouter_api_key"
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
@@ -33,6 +36,13 @@ OLLAMA_DEFAULT_MODEL = "qwen3-coder:30b"
 class GitHubSettings(BaseModel):
     token_ref: str = GITHUB_SECRET_REF
     api_base_url: str = "https://api.github.com"
+    web_base_url: str = "https://github.com"
+    # OAuth (device flow). The client ID of a GitHub OAuth App / GitHub App is public, not a secret.
+    oauth_client_id: str = ""
+    auth_method: Literal["", "oauth", "pat"] = ""
+    oauth_scopes: str = ""
+    include_private_repos: bool = True
+    token_expires_at: float | None = None  # epoch seconds; only for expiring (GitHub App) tokens
 
 
 class OpenRouterSettings(BaseModel):
@@ -129,10 +139,30 @@ class ConfigManager:
         return self.secrets.get(self.config.github.token_ref) or os.environ.get("GITHUB_TOKEN") or None
 
     def set_github_token(self, token: str) -> None:
+        """Personal access token (manual fallback to OAuth sign-in)."""
         self.secrets.set(self.config.github.token_ref, token.strip())
+        self.secrets.delete(GITHUB_REFRESH_REF)
+        self.update(github={"auth_method": "pat", "oauth_scopes": "", "token_expires_at": None})
 
     def clear_github_token(self) -> None:
         self.secrets.delete(self.config.github.token_ref)
+        self.secrets.delete(GITHUB_REFRESH_REF)
+        self.update(github={"auth_method": "", "oauth_scopes": "", "token_expires_at": None})
+
+    def get_github_refresh_token(self) -> str | None:
+        return self.secrets.get(GITHUB_REFRESH_REF)
+
+    def set_github_oauth(self, access_token: str, *, scopes: str, refresh_token: str | None,
+                         expires_at: float | None) -> None:
+        self.secrets.set(self.config.github.token_ref, access_token)
+        if refresh_token:
+            self.secrets.set(GITHUB_REFRESH_REF, refresh_token)
+        else:
+            self.secrets.delete(GITHUB_REFRESH_REF)
+        self.update(github={"auth_method": "oauth", "oauth_scopes": scopes, "token_expires_at": expires_at})
+
+    def effective_oauth_client_id(self) -> str:
+        return (self.config.github.oauth_client_id or os.environ.get("ZEROPULSE_GITHUB_CLIENT_ID") or DEFAULT_GITHUB_CLIENT_ID).strip()
 
     def get_openrouter_key(self) -> str | None:
         return self.secrets.get(self.config.openrouter.api_key_ref) or os.environ.get("OPENROUTER_API_KEY") or None

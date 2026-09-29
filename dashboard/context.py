@@ -24,36 +24,39 @@ class Ctx:
     # bindable status shown in the top bar
     status: dict[str, object] = field(default_factory=lambda: {
         "github_text": "GitHub: checking…", "github_ok": None, "provider_text": "", "model_text": "",
-        "ollama_text": "", "ollama_ok": None, "docker_text": "Sandbox: checking…", "docker_ok": None})
+        "ollama_text": "", "ollama_ok": None, "docker_text": "Sandbox", "docker_ok": None, "docker_reason": "Checking Docker…",
+        "model_chip": "", "model_ok": None})
     _last_watch: float = 0.0
 
     def refresh_static(self) -> None:
         cfg = self.services.cfg
         self.status["provider_text"] = "OpenRouter (free)" if cfg.provider == "openrouter" else "Local Ollama"
         self.status["model_text"] = cfg.active_model
+        short = cfg.active_model.split("/")[-1]
+        self.status["model_chip"] = ("OpenRouter · " if cfg.provider == "openrouter" else "Ollama · ") + short
 
     def check_github(self) -> None:
         if not self.services.config_mgr.get_github_token():
-            self.status.update(github_text="GitHub: not connected", github_ok=False)
+            self.status.update(github_text="GitHub · not connected", github_ok=False)
             return
         try:
             info = self.services.github().test_connection()
-            self.status.update(github_text=f"GitHub: {info.login}", github_ok=True)
+            self.status.update(github_text=f"GitHub · {info.login}", github_ok=True)
         except GitHubError as exc:
-            self.status.update(github_text=f"GitHub: {exc.kind.replace('_', ' ')}", github_ok=False)
+            self.status.update(github_text=f"GitHub · {exc.kind.replace('_', ' ')}", github_ok=False)
 
     def check_local_services(self) -> None:
         ok, reason = self.services.sandbox().available()
-        self.status.update(docker_text="Sandbox: Docker ready" if ok else "Sandbox: unavailable", docker_ok=ok)
+        self.status.update(docker_text="Sandbox · ready" if ok else "Sandbox · off", docker_ok=ok,
+                           docker_reason="Docker (Linux containers) is ready for isolated test runs." if ok else reason)
         if self.services.cfg.provider == "ollama":
             try:
                 h = self.services.provider().health_check()
-                self.status.update(ollama_text="Ollama: ready" if h.ok else "Ollama: " + ("offline" if h.detail.get("kind") == "unavailable" else "model missing"),
-                                   ollama_ok=h.ok)
+                self.status.update(model_ok=h.ok)
             except ProviderError:
-                self.status.update(ollama_text="Ollama: offline", ollama_ok=False)
+                self.status.update(model_ok=False)
         else:
-            self.status.update(ollama_text="", ollama_ok=None)
+            self.status.update(model_ok=bool(self.services.config_mgr.get_openrouter_key()))
 
     async def refresh_all(self) -> None:
         self.refresh_static()
@@ -69,7 +72,7 @@ class Ctx:
                 await self._maybe_poll_watch()
             except Exception:  # noqa: BLE001
                 log.exception("background loop error")
-            await asyncio.sleep(60)
+            await asyncio.sleep(30)
 
     async def _maybe_poll_watch(self) -> None:
         minutes = self.services.cfg.app.watch_poll_minutes

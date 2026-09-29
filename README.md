@@ -3,7 +3,7 @@
 A local desktop companion for GitHub developers: connect GitHub, choose an open-weight model, paste a pull-request URL and
 get a grounded, verifiable code review plus one proposed test file — then decide yourself whether anything is published.
 
-* **Inference:** OpenRouter *free* models (default `qwen/qwen3-coder:free`, verified free at runtime) or local **Ollama**
+* **Inference:** OpenRouter *free* models (only text models OpenRouter currently prices at $0; code-focused ones listed first) or local **Ollama**
   (default `qwen3-coder:30b`). Paid models are never used.
 * **Grounded findings:** every finding is checked against the real diff (file, line, quoted evidence). Unsupported claims are discarded and disclosed.
 * **Human in the loop:** nothing is posted to GitHub without a typed confirmation (or the explicit CLI `--post`).
@@ -33,14 +33,20 @@ The UI server binds to `127.0.0.1` only, on a free port.
 
 ## First-time setup (in the app: **Settings**)
 
-1. **GitHub** — create a *fine-grained personal access token* limited to the repositories you want to review:
-   *Metadata: read*, *Contents: read*, *Pull requests: read*. To publish reviews also grant **Pull requests: write**.
-   Paste it and press **Save connection**. The token is stored with Windows DPAPI (per-user), never in `config.json`.
+1. **GitHub — Sign in with GitHub (recommended).** ZeroPulse uses GitHub's *device sign-in* (the same flow as `gh auth login`):
+   you get a short code, approve it on github.com, done — no token to copy. One-time setup, because GitHub requires every app to have its own ID:
+   1. Open <https://github.com/settings/applications/new> → name `ZeroPulse PR Review`, Homepage and Callback URL `http://127.0.0.1`.
+   2. Tick **Enable Device Flow** → **Register application** → copy the **Client ID** (`Ov23li…`, public — no client secret needed).
+   3. Settings → GitHub → *Sign-in setup* → paste it → **Sign in with GitHub**.
+   "Include private repositories" requests the `repo` scope; otherwise only `public_repo`. The token is stored with Windows DPAPI.
+   A GitHub App Client ID also works (its tokens expire and are refreshed automatically). Personal access tokens remain available as a fallback.
 2. **AI provider**
    * *OpenRouter (free):* paste an API key (free account) → **Refresh model catalog** → pick a model. Only zero-price models are listed and used.
    * *Local Ollama:* start Ollama, `ollama pull qwen3-coder:30b` (ZeroPulse never downloads models), set the context length, **Test local connection**.
    Switching providers needs no restart.
-3. (Optional) Start Docker Desktop to enable **Run in Sandbox**.
+3. (Optional) Install and start **Docker Desktop** (Linux containers) to enable **Run in Sandbox**. Settings → Application → *Test sandbox*
+   tells you exactly what is missing (not installed / engine not running / Windows-containers mode) and has a *Check again* button.
+   ZeroPulse finds Docker Desktop even if `docker` is not on your PATH yet.
 
 ## Using the app
 

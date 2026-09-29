@@ -39,11 +39,11 @@ def pill(text: str, tone: str = "gray"):
 
 
 def stat_card(title: str, value, icon: str, tone: str = "") -> None:
-    with ui.element("div").classes("zp-card flex-1 min-w-[170px]"):
+    with ui.element("div").classes("zp-stat-card"):
         with ui.row().classes("items-center justify-between w-full no-wrap"):
-            ui.label(title).classes("zp-card-title")
-            ui.icon(icon, size="20px").classes("zp-muted")
-        ui.label(str(value)).classes("zp-stat mt-2")
+            ui.label(title).classes("zp-eyebrow")
+            ui.icon(icon, size="18px").classes("zp-muted")
+        ui.label(str(value)).classes("zp-stat")
 
 
 def fmt_time(iso: str | None) -> str:
@@ -93,11 +93,11 @@ def copy_button(text: str, label: str = "Copy", icon: str = "content_copy"):
         ui.clipboard.write(text)
         ui.notify("Copied to clipboard", type="positive", timeout=1500)
 
-    return ui.button(label, icon=icon, on_click=_copy).props("flat dense no-caps size=sm")
+    return ui.button(label, icon=icon, on_click=_copy, color=None).props("flat no-caps").classes("zp-btn-ghost zp-btn-sm")
 
 
 def download_button(text: str, filename: str, label: str = "Download", icon: str = "download", media: str = "text/plain"):
-    return ui.button(label, icon=icon, on_click=lambda: ui.download.content(text.encode("utf-8"), filename, media)).props("flat dense no-caps size=sm")
+    return ui.button(label, icon=icon, on_click=lambda: ui.download.content(text.encode("utf-8"), filename, media), color=None).props("flat no-caps").classes("zp-btn-ghost zp-btn-sm")
 
 
 def skeleton(lines: int = 3, height: str = "18px") -> None:

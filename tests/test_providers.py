@@ -261,3 +261,21 @@ def test_parse_model_free_detection_edge_cases():
     assert not parse_model({"id": "a", "pricing": {"prompt": "0", "completion": "0", "request": "0.01"}}).is_free
     assert not parse_model({"id": "a"}).is_free
     assert not parse_model({"id": "a", "pricing": {"prompt": "-1", "completion": "0"}}).is_free
+
+
+def test_review_models_filters_non_text_and_unsuitable_and_ranks_code_first():
+    cat = {"data": [
+        {"id": "google/lyria-3-clip-preview", "context_length": 1048576, "pricing": {"prompt": "0", "completion": "0"},
+         "architecture": {"input_modalities": ["text"], "output_modalities": ["audio"]}},
+        {"id": "nvidia/nemotron-3.5-content-safety:free", "context_length": 128000, "pricing": {"prompt": "0", "completion": "0"}},
+        {"id": "liquid/tiny:free", "context_length": 8192, "pricing": {"prompt": "0", "completion": "0"}},
+        {"id": "google/gemma-4-31b-it:free", "context_length": 262144, "pricing": {"prompt": "0", "completion": "0"},
+         "architecture": {"modality": "text+image->text"}},
+        {"id": "qwen/qwen3.8-27b:free", "context_length": 262144, "pricing": {"prompt": "0", "completion": "0"}},
+        {"id": "cohere/north-mini-code:free", "context_length": 256000, "pricing": {"prompt": "0", "completion": "0"}},
+        {"id": "openai/gpt-5", "context_length": 400000, "pricing": {"prompt": "0.00001", "completion": "0.00003"}},
+    ]}
+    p = _or(handler=lambda req: httpx.Response(200, json=cat))
+    ids = [m.id for m in p.review_models()]
+    assert ids == ["cohere/north-mini-code:free", "qwen/qwen3.8-27b:free", "google/gemma-4-31b-it:free"]
+    assert all(m.recommended for m in p.review_models()[:3])

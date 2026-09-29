@@ -1,3 +1,4 @@
+import pytest
 import json
 import logging
 
@@ -108,3 +109,78 @@ def test_dotenv_loading(tmp_path, monkeypatch):
     f.write_text("# c\nFOO_TEST_KEY=bar\nEMPTY=\n", encoding="utf-8")
     monkeypatch.delenv("FOO_TEST_KEY", raising=False)
     assert load_dotenv(f) == {"FOO_TEST_KEY": "bar"}
+
+
+# ------------------------------------------------------------------ GitHub OAuth device flow
+import httpx  # noqa: E402
+
+from core.github_oauth import DeviceFlow, OAuthError, OAuthToken, ensure_fresh_token, save_token, scopes_for  # noqa: E402
+
+
+def _flow(responses, sleeps=None):
+    it = iter(responses)
+    seen = []
+
+    def handler(req):
+        seen.append((req.url.path, dict(x.split("=", 1) for x in req.content.decode().split("&"))))
+        status, body = next(it)
+        return httpx.Response(status, json=body)
+
+    return DeviceFlow("Iv1.client", http=httpx.Client(transport=httpx.MockTransport(handler)),
+                      sleep=(sleeps.append if sleeps is not None else (lambda s: None))), seen
+
+
+def test_device_flow_happy_path_with_pending_and_slow_down():
+    sleeps = []
+    flow, seen = _flow([
+        (200, {"device_code": "dc", "user_code": "ABCD-1234", "verification_uri": "https://github.com/login/device", "expires_in": 900, "interval": 5}),
+        (200, {"error": "authorization_pending"}),
+        (200, {"error": "slow_down", "interval": 10}),
+        (200, {"access_token": "gho_x", "scope": "repo,read:user", "token_type": "bearer"}),
+    ], sleeps)
+    code = flow.start(scopes_for(True))
+    assert code.user_code == "ABCD-1234" and seen[0][1]["scope"] == "repo+read%3Auser"
+    tok = flow.wait(code)
+    assert tok.access_token == "gho_x" and tok.refresh_token is None and tok.expires_at is None
+    assert sleeps == [5, 5, 10]  # honours slow_down
+    assert seen[-1][1]["grant_type"].startswith("urn%3Aietf")
+    assert "client_secret" not in seen[-1][1]
+
+
+def test_device_flow_errors():
+    for body, kind in [({"error": "access_denied"}, "denied"), ({"error": "expired_token"}, "expired"),
+                       ({"error": "device_flow_disabled"}, "device_flow_disabled")]:
+        flow, _ = _flow([(200, {"device_code": "d", "user_code": "u", "expires_in": 900, "interval": 1}), (200, body)])
+        code = flow.start("public_repo")
+        with pytest.raises(OAuthError) as e:
+            flow.wait(code)
+        assert e.value.kind == kind
+    flow, _ = _flow([(200, {"error": "device_flow_disabled"})])
+    with pytest.raises(OAuthError) as e:
+        flow.start("repo")
+    assert e.value.kind == "device_flow_disabled"
+    with pytest.raises(OAuthError) as e:
+        DeviceFlow("")
+    assert e.value.kind == "not_configured"
+
+
+def test_oauth_token_storage_and_refresh(tmp_path):
+    import time
+    mgr = ConfigManager(tmp_path / "c.json", MemorySecretStore())
+    save_token(mgr, OAuthToken("ghu_old", "repo", refresh_token="ghr_1", expires_at=time.time() + 60))
+    assert mgr.get_github_token() == "ghu_old" and mgr.config.github.auth_method == "oauth"
+    assert "ghu_old" not in (tmp_path / "c.json").read_text() and "ghr_1" not in (tmp_path / "c.json").read_text()
+    mgr.update(github={"oauth_client_id": "Iv1.client"})
+    http = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={
+        "access_token": "ghu_new", "refresh_token": "ghr_2", "expires_in": 28800, "scope": "repo"})))
+    ensure_fresh_token(mgr, http)
+    assert mgr.get_github_token() == "ghu_new" and mgr.get_github_refresh_token() == "ghr_2"
+    ensure_fresh_token(mgr, httpx.Client(transport=httpx.MockTransport(lambda r: (_ for _ in ()).throw(AssertionError("no refresh needed")))))
+    mgr.clear_github_token()
+    assert mgr.get_github_token() is None and mgr.get_github_refresh_token() is None and mgr.config.github.auth_method == ""
+
+
+def test_pat_fallback_marks_method(tmp_path):
+    mgr = ConfigManager(tmp_path / "c.json", MemorySecretStore())
+    mgr.set_github_token("github_pat_x")
+    assert mgr.config.github.auth_method == "pat"

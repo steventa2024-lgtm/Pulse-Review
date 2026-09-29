@@ -226,7 +226,7 @@ def test_unsafe_test_path_and_unsupported_language_rejected(fake_docker, monkeyp
 
 def test_unavailable_docker_never_claims_execution(tmp_path):
     res = DockerRunner(docker_bin=str(tmp_path / "does-not-exist")).run(_req())
-    assert res.status == "unavailable" and res.output == UNAVAILABLE_MESSAGE and not res.executed
+    assert res.status == "unavailable" and UNAVAILABLE_MESSAGE in res.output and not res.executed
     assert UnavailableRunner().run(_req()).output == UNAVAILABLE_MESSAGE
     tf = TestFile(filename="t.py", language="python", framework="pytest", content="x")
     apply_sandbox_result(tf, res)
@@ -247,3 +247,42 @@ def test_apply_result_semantics():
     tf2 = TestFile(filename="t.py", language="python", framework="pytest", content="x")
     apply_sandbox_result(tf2, SandboxResult("timeout", output="t", runner="docker"))
     assert tf2.execution_status == "error" and tf2.artifact_state == "generated"
+
+
+def _fake_cli(tmp_path, body_py: str):
+    impl = tmp_path / "impl.py"
+    impl.write_text(body_py, encoding="utf-8")
+    if sys.platform == "win32":
+        s = tmp_path / "docker.cmd"
+        s.write_text(f'@"{sys.executable}" "{impl}" %*\r\n', encoding="utf-8")
+    else:
+        s = tmp_path / "docker"
+        s.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{impl}" "$@"\n', encoding="utf-8")
+        s.chmod(0o755)
+    return str(s)
+
+
+@pytest.mark.parametrize("stderr,expect", [
+    ("error during connect: this error may indicate that the docker daemon is not running", "engine is not running"),
+    ("Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?", "engine is not running"),
+    ("permission denied while trying to connect", "refused access"),
+])
+def test_availability_explains_why(tmp_path, stderr, expect):
+    cli = _fake_cli(tmp_path, f"import sys; sys.stderr.write({stderr!r}); sys.exit(1)\n")
+    ok, reason = DockerRunner(docker_bin=cli).available()
+    assert not ok and expect in reason and UNAVAILABLE_MESSAGE in reason
+
+
+def test_missing_docker_says_not_installed(tmp_path):
+    ok, reason = DockerRunner(docker_bin=str(tmp_path / "nope" / "docker")).available()
+    assert not ok and "not installed" in reason
+
+
+def test_failed_check_is_not_cached_so_starting_docker_is_detected(tmp_path):
+    flag = tmp_path / "up"
+    cli = _fake_cli(tmp_path, f"import os,sys\nif os.path.exists({str(flag)!r}): print('linux'); sys.exit(0)\n"
+                              "sys.stderr.write('error during connect'); sys.exit(1)\n")
+    r = DockerRunner(docker_bin=cli)
+    assert r.available()[0] is False
+    flag.write_text("1")
+    assert r.available() == (True, "")

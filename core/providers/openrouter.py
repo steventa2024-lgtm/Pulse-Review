@@ -40,8 +40,35 @@ def parse_model(entry: dict[str, Any]) -> ModelInfo:
     structured = None
     if params:
         structured = any(p in params for p in ("response_format", "structured_outputs"))
+    arch = entry.get("architecture") or {}
+    outs = arch.get("output_modalities")
+    ins = arch.get("input_modalities")
+    text_output = True
+    if isinstance(outs, list) and outs:
+        text_output = "text" in outs and (not isinstance(ins, list) or not ins or "text" in ins)
+    elif isinstance(arch.get("modality"), str) and "->" in arch["modality"]:
+        text_output = "text" in arch["modality"].split("->", 1)[1]
     return ModelInfo(id=entry.get("id", ""), name=entry.get("name", ""), context_length=ctx, is_free=free,
-                     supported_parameters=params, supports_structured_output=structured)
+                     supported_parameters=params, supports_structured_output=structured, text_output=text_output)
+
+
+_UNSUITABLE = ("content-safety", "guard", "safety", "embed", "moderation", "tts", "whisper", "lyria", "image")
+_CODE_HINTS = ("coder", "code", "devstral", "codestral")
+_STRONG_HINTS = ("qwen", "deepseek", "kimi", "glm", "gpt-oss", "llama-3.3-70b", "nemotron-3-super", "nemotron-3-ultra", "mistral")
+
+
+def review_score(m: ModelInfo) -> tuple:
+    """Sort key: code-specialised first, then strong general models, then by context window."""
+    mid = m.id.lower()
+    code = any(h in mid for h in _CODE_HINTS)
+    strong = any(h in mid for h in _STRONG_HINTS)
+    router = mid.startswith("openrouter/")
+    return (0 if code else 1 if strong else 2, 1 if router else 0, -(m.context_length or 0), mid)
+
+
+def suitable_for_review(m: ModelInfo) -> bool:
+    mid = m.id.lower()
+    return m.is_free and m.text_output and not any(h in mid for h in _UNSUITABLE) and (m.context_length or 16384) >= 16384
 
 
 class OpenRouterProvider(LLMProvider):
@@ -91,6 +118,13 @@ class OpenRouterProvider(LLMProvider):
 
     def list_free_models(self, force: bool = False) -> list[ModelInfo]:
         return sorted((m for m in self.fetch_catalog(force) if m.is_free), key=lambda m: m.id)
+
+    def review_models(self, force: bool = False) -> list[ModelInfo]:
+        """Verified-free, text-capable models suited to code review, best first. Top picks are marked recommended."""
+        models = sorted((m for m in self.fetch_catalog(force) if suitable_for_review(m)), key=review_score)
+        for m in models[:3]:
+            m.recommended = True
+        return models
 
     def candidate_status(self) -> list[ModelInfo]:
         """Preferred candidates annotated with live availability (unavailable ones stay listed but disabled)."""

@@ -30,6 +30,8 @@ class AppServices:
         return self.config_mgr.config
 
     def github(self) -> GitHubClient:
+        from .github_oauth import ensure_fresh_token
+        ensure_fresh_token(self.config_mgr)
         return GitHubClient(self.config_mgr.get_github_token(), self.cfg.github.api_base_url)
 
     def provider(self, provider: str | None = None, model: str | None = None) -> LLMProvider:

@@ -106,6 +106,8 @@ class ConnectionInfo:
     html_url: str
     rate_remaining: int | None = None
     rate_limit: int | None = None
+    avatar_url: str = ""
+    scopes: str = ""
 
 
 @dataclass
@@ -174,8 +176,11 @@ class GitHubClient:
                 rate = self.gh.get_rate_limit().core
             except Exception:  # noqa: BLE001 - rate info is optional
                 rate = None
+            scopes = getattr(self.gh, "oauth_scopes", None)
             return ConnectionInfo(login=login, name=getattr(user, "name", None), html_url=getattr(user, "html_url", ""),
-                                  rate_remaining=getattr(rate, "remaining", None), rate_limit=getattr(rate, "limit", None))
+                                  rate_remaining=getattr(rate, "remaining", None), rate_limit=getattr(rate, "limit", None),
+                                  avatar_url=getattr(user, "avatar_url", "") or "",
+                                  scopes=", ".join(scopes) if isinstance(scopes, list) else "")
         except Exception as exc:  # noqa: BLE001
             raise _map_exc(exc) from exc
 
