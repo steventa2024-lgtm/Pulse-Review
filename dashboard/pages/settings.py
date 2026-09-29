@@ -12,6 +12,7 @@ from core.config import OLLAMA_BASE_URL
 from core.github_client import GitHubError, InvalidPRUrl, parse_repo_name
 from core.github_oauth import DeviceFlow, OAuthError, save_token, scopes_for
 from core.providers import ProviderError
+from core.providers.ollama import SUGGESTED_MODELS
 from core.sandbox import docker_setup
 from core.security import mask_secret
 
@@ -286,18 +287,25 @@ def ai_panel(ctx: Ctx, save) -> None:
     or_model.on_value_change(on_or_model)
 
     # ---------------------------------------------------------------- Ollama
-    with card("Ollama", "Runs entirely on this PC. ZeroPulse never downloads or changes your models."):
+    with card("Ollama", "Runs entirely on this PC. Models are only downloaded when you click Download."):
         with setting("Server", "Default: http://localhost:11434/v1"):
             with ui.row().classes("items-center gap-2 no-wrap w-full"):
                 ol_url = text_input(OLLAMA_BASE_URL, value=svc.cfg.ollama.base_url, classes="w-96")
                 btn("Connect", "link", lambda: refresh_ol(), kind="secondary")
             ol_status = ui.column().classes("w-full")
-        with setting("Model", "Installed models only. Install others with: ollama pull <name>"):
+        with setting("Model", "Models installed in Ollama. Get more below."):
             ol_model = select({svc.cfg.ollama.model: svc.cfg.ollama.model}, value=svc.cfg.ollama.model, classes="w-full max-w-[560px]",
                               with_input=True, new_values=True)
             ol_model.on_value_change(lambda e: e.value and save(ollama={"model": e.value}))
             btn("Test model", "bolt", lambda: test_model("ollama", ol_out), kind="secondary").classes("self-start")
             ol_out = ui.column().classes("w-full")
+        with setting("Get more models", "Download a model into Ollama. Nothing downloads unless you click. "
+                                         "Models marked “fits 8 GB GPU” run fully on your graphics card and are fastest."):
+            gallery = ui.column().classes("w-full gap-0")
+            with ui.row().classes("items-center gap-2 no-wrap w-full mt-2"):
+                custom = text_input("Any model from ollama.com/library, e.g. mistral-nemo:12b", classes="flex-1")
+                btn("Download", "download", lambda: pull((custom.value or "").strip()), kind="secondary")
+            pull_box = ui.column().classes("w-full gap-1")
         with setting("Performance", "Larger context lets the model see more code per call but needs more memory. "
                                     "Big models may not fit entirely in 8 GB VRAM — Ollama splits GPU/CPU automatically."):
             with ui.row().classes("gap-4"):
@@ -319,6 +327,8 @@ def ai_panel(ctx: Ctx, save) -> None:
             with ol_status:
                 callout(exc.message, "err")
             return
+        installed.clear()
+        installed.update(m.id for m in models)
         if models:
             cur = svc.cfg.ollama.model
             opts = {m.id: m.id for m in models}
@@ -327,6 +337,85 @@ def ai_panel(ctx: Ctx, save) -> None:
             ol_model.set_options(opts, value=cur)
         with ol_status:
             callout(h.message, "ok" if h.ok else "warn")
+        ollama_up["ok"] = h.detail.get("kind") not in ("unavailable", "timeout")
+        draw_gallery()
+
+    installed: set[str] = set()
+    ollama_up = {"ok": False}
+    pulling = {"name": None, "cancel": None}
+
+    def is_installed(name: str) -> bool:
+        return name in installed or f"{name}:latest" in installed or (":" not in name and any(i.startswith(name + ":") for i in installed))
+
+    def draw_gallery() -> None:
+        gallery.clear()
+        with gallery:
+            for m in SUGGESTED_MODELS:
+                with ui.row().classes("items-center gap-3 w-full no-wrap py-2").style("border-bottom:1px solid var(--zp-border-soft)"):
+                    with ui.column().classes("gap-0 flex-1 min-w-0"):
+                        with ui.row().classes("items-center gap-2"):
+                            ui.label(m.name).classes("zp-mono")
+                            if m.fits_8gb:
+                                ui.label("fits 8 GB GPU").classes("zp-badge zp-b-ok")
+                        ui.label(f"~{m.size_gb:g} GB · {m.note}").classes("zp-xs zp-muted")
+                    if is_installed(m.name):
+                        with ui.row().classes("items-center gap-1 zp-ok zp-small"):
+                            ui.icon("check_circle", size="16px")
+                            ui.label("Installed")
+                        btn("Use", on_click=lambda n=m.name: use_model(n), kind="ghost", size="sm")
+                    else:
+                        b = btn("Download", "download", lambda n=m.name: pull(n), kind="secondary", size="sm")
+                        if not ollama_up["ok"] or pulling["name"]:
+                            b.disable()
+
+    def use_model(name: str) -> None:
+        full = next((i for i in installed if i == name or i == f"{name}:latest"), name)
+        save(ollama={"model": full})
+        opts = dict(ol_model.options) if isinstance(ol_model.options, dict) else {o: o for o in ol_model.options}
+        opts.setdefault(full, full)
+        ol_model.set_options(opts, value=full)
+        ui.notify(f"Now using {full}", type="positive")
+
+    async def pull(name: str) -> None:
+        if not name:
+            ui.notify("Enter a model name first.", type="warning")
+            return
+        if pulling["name"]:
+            ui.notify("A download is already running.", type="warning")
+            return
+        cancel = threading.Event()
+        pulling.update(name=name, cancel=cancel)
+        draw_gallery()
+        pull_box.clear()
+        state = {"status": "starting…", "frac": None}
+        with pull_box:
+            with ui.row().classes("items-center gap-2 w-full no-wrap"):
+                ui.label(f"Downloading {name}").classes("zp-small zp-h3")
+                ui.space()
+                btn("Cancel", on_click=cancel.set, kind="ghost", size="sm")
+            bar = ui.linear_progress(value=0, show_value=False).props("rounded color=primary track-color=grey-9 size=8px")
+            status = ui.label().classes("zp-xs zp-muted")
+
+        def tick() -> None:
+            f = state["frac"]
+            bar.set_value(f or 0)
+            status.set_text(state["status"] + (f" · {f * 100:.0f}%" if f is not None else ""))
+
+        timer = ui.timer(0.5, tick)
+        err = None
+        try:
+            await run.io_bound(lambda: svc.provider("ollama").pull_model(
+                name, lambda st, fr: state.update(status=st, frac=fr), cancel))
+        except ProviderError as exc:
+            err = exc.message
+        timer.deactivate()
+        pulling.update(name=None, cancel=None)
+        pull_box.clear()
+        with pull_box:
+            callout(err, "err") if err else callout(f"{name} is installed and ready to use.", "ok")
+        if not err:
+            custom.set_value("")
+        await refresh_ol()
 
     async def test_model(which: str, out) -> None:
         out.clear()

@@ -20,6 +20,10 @@ class LanguageProfile:
     install_cmd: Callable[[str], list[str]]  # (repo_root_listing_hint) -> command (run WITH network, if consented)
     test_cmd: Callable[[str, str], list[str]]  # (test_path, framework) -> command (run WITHOUT network)
     env: dict[str, str] = field(default_factory=dict)
+    # Optional tool image built once from `image` (trusted Dockerfile only — never repository code),
+    # e.g. to have the test runner itself (pytest) available without installing anything per run.
+    runner_image: str | None = None
+    runner_dockerfile: str | None = None
 
 
 def _py_install(_: str) -> list[str]:
@@ -44,7 +48,9 @@ PROFILES: dict[str, LanguageProfile] = {
     "python": LanguageProfile(
         "python", "python:3.11-slim", _py_install,
         lambda path, fw: ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--no-header", path],
-        env={"PYTHONPATH": "/work:/work/src:/work/.zp_deps", "PYTHONDONTWRITEBYTECODE": "1"}),
+        env={"PYTHONPATH": "/work:/work/src:/work/.zp_deps", "PYTHONDONTWRITEBYTECODE": "1"},
+        runner_image="zeropulse/sandbox-python:3.11-v1",
+        runner_dockerfile="FROM python:3.11-slim\nRUN pip install --no-cache-dir --disable-pip-version-check pytest\n"),
     "javascript": LanguageProfile("javascript", "node:20-slim", _js_install, _js_test, env={"CI": "1"}),
     "typescript": LanguageProfile("typescript", "node:20-slim", _js_install, _js_test, env={"CI": "1"}),
 }

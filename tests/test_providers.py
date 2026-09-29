@@ -301,3 +301,32 @@ def test_daily_free_quota_is_not_retried_and_explained(monkeypatch):
     with pytest.raises(ProviderError) as err:
         _or(sdk=sdk).generate([{"role": "user", "content": "x"}])
     assert "today's free" in err.value.message and len(sdk.calls) == 1
+
+
+def test_ollama_pull_streams_progress_and_reports_errors(monkeypatch):
+    import json as _json
+    from core.providers import ollama as om
+    events = [{"status": "pulling manifest"}, {"status": "downloading", "total": 100, "completed": 40},
+              {"status": "downloading", "total": 100, "completed": 100}, {"status": "success"}]
+    body = "\n".join(_json.dumps(e) for e in events).encode()
+    seen_req = {}
+
+    def handler(req):
+        seen_req["path"], seen_req["json"] = req.url.path, _json.loads(req.content)
+        return httpx.Response(200, content=body)
+
+    real_client = httpx.Client
+    monkeypatch.setattr(om.httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(handler)))
+    p = OllamaProvider(ProviderConfig(provider="ollama", base_url="http://localhost:11434/v1", model="m"))
+    got = []
+    p.pull_model("qwen2.5-coder:7b", lambda s, f: got.append((s, f)))
+    assert seen_req == {"path": "/api/pull", "json": {"model": "qwen2.5-coder:7b", "stream": True}}
+    assert got[1] == ("downloading", 0.4) and got[-1] == ("success", None)
+    err = _json.dumps({"error": "pull model manifest: file does not exist"}).encode()
+    monkeypatch.setattr(om.httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(lambda r: httpx.Response(200, content=err))))
+    with pytest.raises(ProviderError) as e:
+        p.pull_model("nope:1b")
+    assert "does not exist" in e.value.message
+    with pytest.raises(ProviderError):
+        p.pull_model("bad name")
+    assert om.SUGGESTED_MODELS[0].fits_8gb and not om.SUGGESTED_MODELS[-1].fits_8gb

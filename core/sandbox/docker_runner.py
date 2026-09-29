@@ -105,6 +105,31 @@ class DockerRunner(SandboxRunner):
         except (subprocess.SubprocessError, OSError):
             return False
 
+    def ensure_image(self, profile, allow_pull: bool) -> tuple[str | None, str]:
+        """Image to run tests in, preparing the one-time tool image (e.g. python + pytest) if needed.
+
+        Returns (image, note). image is None when nothing usable exists and pulling was not allowed.
+        """
+        if profile.runner_image and self.image_present(profile.runner_image):
+            return profile.runner_image, ""
+        base_ok = self.image_present(profile.image)
+        if not base_ok and not allow_pull:
+            return None, (f"The Docker image '{profile.image}' is not on this PC yet. Tick 'Allow Docker to download the base "
+                          f"image' or run `docker pull {profile.image}` once, then try again.")
+        if profile.runner_image and profile.runner_dockerfile:
+            try:
+                p = subprocess.run([self.docker, "build", "-t", profile.runner_image, "-"], input=profile.runner_dockerfile,
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900,
+                                   env=host_env_for_docker_cli(), **_NO_WINDOW)
+                if p.returncode == 0:
+                    return profile.runner_image, f"=== prepared sandbox image {profile.runner_image} (one-time) ==="
+                log.warning("Sandbox image build failed: %s", (p.stderr or p.stdout)[-500:])
+                note = "=== could not prepare the sandbox tool image; using the base image (enable dependency install if the test runner is missing) ==="
+            except (subprocess.SubprocessError, OSError) as exc:
+                note = f"=== could not prepare the sandbox tool image ({exc}); using the base image ==="
+            return profile.image, note
+        return profile.image, ""
+
     def build_run_args(self, *, name: str, workdir: Path, image: str, command: list[str], network: bool,
                        req: SandboxRequest, env: dict[str, str]) -> list[str]:
         """The exact `docker run` argument list (public so tests can assert the safety flags)."""
@@ -187,10 +212,9 @@ class DockerRunner(SandboxRunner):
         rel = safe_relative_path(req.test_path)
         if rel is None:
             return SandboxResult("error", output="Unsafe test file path.", runner=self.name)
-        if not self.image_present(profile.image) and not req.allow_pull:
-            return SandboxResult("error", runner=self.name, output=(
-                f"The Docker image '{profile.image}' is not installed locally. ZeroPulse does not download images "
-                f"without consent. Run `docker pull {profile.image}` or enable 'Allow image download'."))
+        image, prep_note = self.ensure_image(profile, req.allow_pull)
+        if image is None:
+            return SandboxResult("error", runner=self.name, output=prep_note)
         root = Path(tempfile.mkdtemp(prefix="zp-sandbox-", dir=self.workdir_root))
         started = time.monotonic()
         try:
@@ -204,11 +228,11 @@ class DockerRunner(SandboxRunner):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(req.test_content, encoding="utf-8")
             self._make_writable(repo_root)
-            outputs: list[str] = []
+            outputs: list[str] = [prep_note] if prep_note else []
             base = f"zp-sandbox-{uuid.uuid4().hex[:10]}"
             if req.install_dependencies:
                 name = base + "-install"
-                args = self.build_run_args(name=name, workdir=repo_root, image=profile.image,
+                args = self.build_run_args(name=name, workdir=repo_root, image=image,
                                            command=profile.install_cmd(""), network=True, req=req, env=profile.env)
                 code, out, outcome = self._exec(args, name, req.timeout, req.max_output_bytes, cancel)
                 outputs.append("=== dependency installation (network enabled, isolated) ===\n" + out)
@@ -217,7 +241,7 @@ class DockerRunner(SandboxRunner):
                     return SandboxResult(status, output=redact_secrets("\n".join(outputs))[0], runner=self.name,
                                          duration_seconds=time.monotonic() - started)
             name = base + "-test"
-            args = self.build_run_args(name=name, workdir=repo_root, image=profile.image,
+            args = self.build_run_args(name=name, workdir=repo_root, image=image,
                                        command=profile.test_cmd(rel, req.framework), network=False, req=req, env=profile.env)
             code, out, outcome = self._exec(args, name, req.timeout, req.max_output_bytes, cancel)
             outputs.append("=== test execution (network disabled) ===\n" + out)

@@ -49,7 +49,10 @@ cmd, mode = (args[0] if args else ""), os.environ.get("FAKE_DOCKER_MODE", "")
 if cmd == "info":
     print(os.environ.get("FAKE_DOCKER_OSTYPE", "linux")); sys.exit(0)
 if cmd == "image":
-    sys.exit(1 if os.environ.get("FAKE_IMAGE") == "missing" else 0)
+    m = os.environ.get("FAKE_IMAGE", "")
+    sys.exit(1 if m == "missing" or (m == "runner-missing" and "zeropulse/" in args[-1]) else 0)
+if cmd == "build":
+    sys.exit(1 if os.environ.get("FAKE_BUILD") == "fail" else 0)
 if cmd == "run":
     if mode == "pass": print("2 passed in 0.03s"); sys.exit(0)
     if mode == "fail": print("1 failed, 1 passed in 0.10s"); sys.exit(1)
@@ -303,3 +306,34 @@ def test_docker_install_command_and_output_streaming(monkeypatch):
     assert seen == ["Found Docker Desktop", "██████████ 100%", "Successfully installed"] or "Successfully installed" in seen
     monkeypatch.setattr(ds.sys, "platform", "linux")
     assert ds.docker_desktop_exe() is None and ds.start_docker_desktop() is False
+
+
+def test_runner_image_with_pytest_is_prepared_once_from_trusted_dockerfile(fake_docker, monkeypatch):
+    script, log = fake_docker
+    monkeypatch.setenv("FAKE_DOCKER_MODE", "pass")
+    monkeypatch.setenv("FAKE_IMAGE", "runner-missing")
+    res = DockerRunner(docker_bin=str(script)).run(_req())
+    calls = log.read_text().splitlines()
+    assert any(c.startswith("build -t zeropulse/sandbox-python") for c in calls)
+    run = [c for c in calls if c.startswith("run ")][0]
+    assert "zeropulse/sandbox-python:3.11-v1 python -m pytest" in run and "--network none" in run
+    assert res.status == "passed" and "prepared sandbox image" in res.output
+
+
+def test_existing_runner_image_is_used_without_building(fake_docker, monkeypatch):
+    script, log = fake_docker
+    monkeypatch.setenv("FAKE_DOCKER_MODE", "pass")
+    DockerRunner(docker_bin=str(script)).run(_req())
+    calls = log.read_text().splitlines()
+    assert not any(c.startswith("build") for c in calls)
+    assert "zeropulse/sandbox-python:3.11-v1" in [c for c in calls if c.startswith("run ")][0]
+
+
+def test_failed_image_build_falls_back_to_base_image(fake_docker, monkeypatch):
+    script, log = fake_docker
+    monkeypatch.setenv("FAKE_DOCKER_MODE", "pass")
+    monkeypatch.setenv("FAKE_IMAGE", "runner-missing")
+    monkeypatch.setenv("FAKE_BUILD", "fail")
+    res = DockerRunner(docker_bin=str(script)).run(_req())
+    run = [c for c in log.read_text().splitlines() if c.startswith("run ")][0]
+    assert "python:3.11-slim python -m pytest" in run and "could not prepare" in res.output

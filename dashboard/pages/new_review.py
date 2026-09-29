@@ -3,7 +3,6 @@ from __future__ import annotations
 from nicegui import run, ui
 
 from core.github_client import GitHubError, InvalidPRUrl, parse_pr_url
-from core.providers import ProviderError
 from core.review_pipeline import STEPS
 from core.schemas import PRRef
 
@@ -117,7 +116,7 @@ def register(ctx: Ctx) -> None:
                         current = cfg.ollama.model
                         if current not in opts:
                             opts[current] = f"{current}  ·  not installed"
-                        model_note.set_text("Models installed in Ollama on this PC.")
+                        model_note.set_text("Models installed in Ollama on this PC · download more in Settings → AI models.")
                     model_sel.set_options(opts, value=current)
                 except Exception as exc:  # noqa: BLE001 - offline catalog: keep the saved choice (still verified before use)
                     saved = cfg.openrouter.model if p == "openrouter" else cfg.ollama.model

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import json
 from pathlib import Path
 
 from dashboard.components.external import open_external
@@ -9,14 +8,13 @@ from nicegui import run, ui
 
 from core.diff_parser import DiffIndex
 from core.github_client import GitHubError
-from core.publisher import (ConfirmationError, DuplicatePublicationError, PublishError, PublishOptions, StaleReviewError,
-                            render_issue_md)
+from core.publisher import (ConfirmationError, DuplicatePublicationError, PublishError, PublishOptions, StaleReviewError)
 from core.report import render_report
 from core.schemas import Issue, PRData, ReviewResult
 from core.security import resolve_inside
-from core.services import run_sandbox_for_review
 
 from ..components.layout import frame
+from ..components.sandbox_dialog import open_sandbox_dialog
 from ..components.widgets import (copy_button, diff_html, download_button, fmt_time, github_diff_url, pill, risk_badge,
                                   severity_badge, skeleton, status_badge)
 from ..context import Ctx
@@ -265,37 +263,23 @@ def test_panel(ctx: Ctx, rid: str, result: ReviewResult, row) -> None:
                 ui.notify(f"Could not save: {exc}", type="negative")
 
         def sandbox_dialog() -> None:
-            with ui.dialog() as d, ui.card().classes("zp-card w-[520px] max-w-full"):
-                ui.label("Run generated test in an isolated Docker container").classes("zp-h2")
-                ui.label("The pull-request code is downloaded from GitHub and executed only inside a container: no network during the test run, "
-                         "no host folders, no credentials, CPU/memory limits and a timeout.").classes("zp-small zp-muted")
-                install = ui.checkbox("Install dependencies first (network is enabled during installation only)")
-                pull = ui.checkbox("Allow Docker to download the base image if it is missing")
-                with ui.row().classes("justify-end w-full"):
-                    ui.button("Cancel", on_click=d.close, color=None).props("flat no-caps").classes("zp-btn-ghost")
+            def starting() -> None:
+                out_box.clear()
+                with out_box:
+                    with ui.row().classes("items-center gap-2"):
+                        ui.spinner(size="16px")
+                        ui.label("Running in the sandbox…").classes("zp-small")
 
-                    async def go() -> None:
-                        d.close()
-                        out_box.clear()
-                        with out_box:
-                            with ui.row().classes("items-center gap-2"):
-                                ui.spinner()
-                                ui.label("Running in sandbox…").classes("zp-small")
-                        try:
-                            res = await run.io_bound(lambda: run_sandbox_for_review(ctx.services, rid, install_deps=bool(install.value), allow_pull=bool(pull.value)))
-                        except GitHubError as exc:
-                            ui.notify(exc.message, type="negative")
-                            return
-                        fresh = ctx.services.db.get_result(rid)
-                        if fresh and fresh.test_file:
-                            for f in ("execution_status", "execution_output", "tests_passed", "tests_failed", "duration_seconds", "artifact_state"):
-                                setattr(tf, f, getattr(fresh.test_file, f))
-                        else:
-                            tf.execution_output = res.output
-                        show_results()
+            def done(res) -> None:
+                fresh = ctx.services.db.get_result(rid)
+                if fresh and fresh.test_file:
+                    for f in ("execution_status", "execution_output", "tests_passed", "tests_failed", "duration_seconds", "artifact_state"):
+                        setattr(tf, f, getattr(fresh.test_file, f))
+                elif res is not None:
+                    tf.execution_output = res.output
+                show_results()
 
-                    ui.button("Run", color="primary", on_click=go)
-            d.open()
+            open_sandbox_dialog(ctx, rid, on_start=starting, on_done=done)
 
 
 def publish_panel(ctx: Ctx, rid: str, row, result: ReviewResult, sel: dict[str, bool], stale_box) -> None:

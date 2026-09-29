@@ -4,12 +4,10 @@ from __future__ import annotations
 import ast
 import json
 import re
-import textwrap
 from dataclasses import dataclass, field
-from pathlib import PurePosixPath
 from typing import Callable
 
-from .context_builder import RepoContext, is_lockfile, is_test_path, language_of
+from .context_builder import RepoContext, is_test_path, language_of
 from .diff_parser import DiffIndex
 from .schemas import Issue, PRData
 from .security import find_secret_labels, redact_secrets

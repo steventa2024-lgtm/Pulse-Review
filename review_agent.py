@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 
 DESCRIPTION = """Review a GitHub pull request with an open-weight model.

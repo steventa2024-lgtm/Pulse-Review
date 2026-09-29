@@ -1,6 +1,15 @@
-# ZeroPulse PR Review Agent
+<p align="center">
+  <img src="docs/assets/banner.jpg" alt="PulseReview — Automated PR Review Agent, licensed with ZeroPulse" width="100%">
+</p>
 
-A local desktop companion for GitHub developers: connect GitHub, choose an open-weight model, paste a pull-request URL and
+<p align="center">
+  <img src="docs/assets/icon.png" alt="PulseReview app icon" width="96"><br>
+  <b>Local-first AI pull-request reviews · free open-weight models · you approve everything that gets posted</b>
+</p>
+
+# ZeroPulse PR Review Agent (PulseReview)
+
+A local desktop companion for GitHub developers: sign in with GitHub, choose an open-weight model, pick a repository and pull request, and
 get a grounded, verifiable code review plus one proposed test file — then decide yourself whether anything is published.
 
 * **Inference:** OpenRouter *free* models (only text models OpenRouter currently prices at $0; code-focused ones listed first) or local **Ollama**
@@ -50,7 +59,7 @@ The UI server binds to `127.0.0.1` only, on a free port.
 
 ## Using the app
 
-* **New Review** → paste `https://github.com/OWNER/REPO/pull/123` → *Check* → choose depth (Quick/Standard/Deep) and options → **START REVIEW**.
+* **New review** → pick a **repository** and one of its **open pull requests** (or paste a link) → choose depth (Quick/Standard/Deep) and options → **START REVIEW**.
   Progress shows real pipeline stages (no fake percentages).
 * **Review details** shows summary, overall risk, findings (with a line-numbered diff excerpt, evidence, suggested fix), the proposed test
   (copy / download / save / run in sandbox), the files actually inspected and every limitation. Uncertain items are labelled

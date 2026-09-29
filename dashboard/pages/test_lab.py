@@ -4,11 +4,10 @@ from pathlib import Path
 
 from nicegui import run, ui
 
-from core.github_client import GitHubError
-from core.services import run_sandbox_for_review
 
 from ..components.kit import page_header
 from ..components.layout import frame
+from ..components.sandbox_dialog import open_sandbox_dialog
 from ..components.widgets import copy_button, download_button, fmt_time, pill
 from .review_detail import LANG_MAP
 
@@ -63,15 +62,8 @@ def register(ctx) -> None:
                                 rb.disable()
                                 ui.label("Sandbox unavailable — generated test has not been executed.").classes("zp-warn zp-xs")
 
-            async def run_it(a: dict) -> None:
-                ui.notify("Running in sandbox (dependencies are not installed unless the image already has them)…")
-                try:
-                    res = await run.io_bound(lambda: run_sandbox_for_review(svc, a["review_id"]))
-                except GitHubError as exc:
-                    ui.notify(exc.message, type="negative")
-                    return
-                ui.notify(f"Sandbox result: {res.status}", type="positive" if res.status == "passed" else "warning")
-                show(a)
+            def run_it(a: dict) -> None:
+                open_sandbox_dialog(ctx, a["review_id"], on_done=lambda res: show(a))
 
             if arts:
                 cols = [{"name": "filename", "label": "Test file", "field": "filename", "align": "left"},

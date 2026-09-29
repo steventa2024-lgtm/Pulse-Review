@@ -6,7 +6,7 @@ import difflib
 import logging
 import textwrap
 from dataclasses import dataclass, field
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
 
