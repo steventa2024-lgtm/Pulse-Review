@@ -48,7 +48,7 @@ export MACOSX_DEPLOYMENT_TARGET=14.0
 "$PY" -m PyInstaller --noconfirm --clean --distpath dist/mac --workpath build/mac/pyinstaller packaging/mac.spec
 APP="$ROOT/dist/mac/PulseReview.app"
 test -x "$APP/Contents/MacOS/PulseReview"
-lipo -verify_arch arm64 "$APP/Contents/MacOS/PulseReview"
+lipo "$APP/Contents/MacOS/PulseReview" -verify_arch arm64
 codesign --verify --deep --strict --verbose=2 "$APP"
 "$PY" tools/smoke_mac.py "$APP"
 

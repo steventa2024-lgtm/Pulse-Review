@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -55,6 +56,9 @@ def main(app: Path) -> None:
                 assert probe.connect_ex(("127.0.0.1", port)) != 0, "Dashboard server survived app close"
         assert (data / "reviews.db").is_file()
         assert json.loads((data / "config.json").read_text())["app"]["watch_poll_minutes"] == 7
+        with sqlite3.connect(data / "reviews.db") as db:
+            assert db.execute("SELECT count(*) FROM reviews WHERE status='completed'").fetchone()[0] == 1
+            assert db.execute("SELECT count(*) FROM watched_repos").fetchone()[0] == 1
         (reports / "packaged-smoke.json").write_text(json.dumps({
             **diagnostics, "native_launch_and_reopen": "passed twice",
             "server_shutdown": "passed twice", "settings_across_launches": "passed",

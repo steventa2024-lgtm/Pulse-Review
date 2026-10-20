@@ -28,8 +28,14 @@ def run_diagnostics() -> int:
     db = Database()
     db.add_watched_repo("octocat/Hello-World")
     assert Database().list_watched_repos()[0]["repo"] == "octocat/Hello-World"
+    rid = db.create_review(repo="octocat/Hello-World", pr_number=1,
+                           pr_url="https://github.com/octocat/Hello-World/pull/1",
+                           provider="ollama", model="diagnostic-only", status="completed")
+    db.update_review(rid, summary="Local persistence diagnostic; no AI or GitHub calls made")
+    assert Database().get_review(rid)["status"] == "completed"
+    db.set_pref("mac_diagnostic_review", rid)
     (data_dir() / "diagnostics.json").write_text(json.dumps({
         "keychain": "passed (temporary entry created, read, deleted)",
-        "settings": "passed", "watched_repos": "passed",
+        "settings": "passed", "watched_repos": "passed", "review_history": "passed (synthetic record)",
     }, indent=2), encoding="utf-8")
     return 0

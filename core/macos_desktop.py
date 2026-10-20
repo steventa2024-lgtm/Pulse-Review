@@ -77,12 +77,13 @@ def _native_smoke(window, url: str, report: str) -> None:
     results = {}
     try:
         for route, text in [("/", "Dashboard"), ("/review/new", "New review"),
-                            ("/history", "Review history"), ("/watch", "Watched repositories"),
+                            ("/code", "Code reviewer"), ("/history", "Review history"), ("/watch", "Watched repositories"),
                             ("/testlab", "Test lab"), ("/settings", "Settings")]:
             window.load_url(url + route)
             deadline = time.monotonic() + 30
             while time.monotonic() < deadline:
-                if window.evaluate_js("typeof Vue !== 'undefined' && document.body.innerText.includes(" + json.dumps(text) + ")"):
+                if window.evaluate_js("typeof Vue !== 'undefined' && location.pathname === " + json.dumps(route) +
+                                      " && document.querySelector('.zp-h1')?.innerText === " + json.dumps(text)):
                     results[route] = "passed"
                     break
                 time.sleep(0.25)
@@ -111,6 +112,7 @@ def run_desktop(*, port: int, browser: bool = False, smoke_report: str | None = 
         else:
             try:
                 import webview
+                webview.settings["ALLOW_DOWNLOADS"] = True
                 window = webview.create_window("PulseReview", url, width=1440, height=900, min_size=(900, 600))
                 if smoke_report:
                     webview.start(_native_smoke, (window, url, smoke_report), gui="cocoa", debug=False)
