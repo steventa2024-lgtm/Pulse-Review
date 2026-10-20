@@ -2,6 +2,10 @@
   <img src="website/public/brand/banner.jpg" alt="PulseReview — Automated PR Review Agent, developed and licensed by ZeroPulse" width="100%">
 </p>
 
+Apple Silicon macOS beta is in preparation. See the [Mac installation guide](docs/MACOS_INSTALL.md)
+and [download integration handoff](docs/WEBSITE_DOWNLOAD_HANDOFF.md). A public Mac
+download will appear only after verification and owner approval; the Windows download remains available.
+
 <p align="center">
   <img src="website/public/brand/icon.png" alt="PulseReview app icon" width="96"><br>
   <b>AI pull-request reviews on your desktop · free open-weight models · you approve everything that gets posted</b>

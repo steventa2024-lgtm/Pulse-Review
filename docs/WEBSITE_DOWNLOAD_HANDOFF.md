@@ -13,11 +13,11 @@ There is no published Mac release yet. Do not add a live Mac download link until
 the owner approves publication and the assets are verified. Planned first tag:
 macos-v0.1.3-beta.1, built from the exact tested application commit.
 
-Future URL template — not currently a working download:
-https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/<APPROVED_MAC_TAG>/PulseReview-macOS-arm64.dmg
+Planned first Mac URL — inactive until the approved release is published:
+https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/macos-v0.1.3-beta.1/PulseReview-macOS-arm64.dmg
 
-Future checksum template:
-https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/<APPROVED_MAC_TAG>/PulseReview-macOS-arm64.dmg.sha256
+Planned first Mac checksum — also inactive:
+https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/macos-v0.1.3-beta.1/PulseReview-macOS-arm64.dmg.sha256
 
 Reuse website/src/hooks/releaseSelection.ts for independent per-OS selection.
 It requires the exact file name, checksum asset, GitHub SHA-256 digest, published
