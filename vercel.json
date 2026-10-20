@@ -1,0 +1,4 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": { "deploymentEnabled": { "feat/macos-arm64": false, "feat/macos-downloads": false } }
+}

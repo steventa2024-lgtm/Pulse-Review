@@ -5,7 +5,7 @@ import logging
 from core import paths
 from core.config import ConfigManager
 from core.logging_setup import setup_logging
-from core.security import (FileSecretStore, MemorySecretStore, SecretRedactingFilter, load_dotenv, mask_secret,
+from core.security import (MemorySecretStore, SecretRedactingFilter, load_dotenv, mask_secret,
                            redact_secrets, resolve_inside, safe_filename, safe_relative_path, wrap_untrusted)
 from tests.fixtures.pr_fixture import FAKE_TOKEN
 
@@ -51,8 +51,8 @@ def test_corrupt_config_falls_back_to_defaults(tmp_path):
     assert (tmp_path / "config.json.bak").exists()
 
 
-def test_file_secret_store_roundtrip(tmp_path):
-    s = FileSecretStore(tmp_path)
+def test_memory_secret_store_roundtrip():
+    s = MemorySecretStore()
     s.set("github_token", "abc")
     assert s.get("github_token") == "abc" and s.has("github_token")
     s.delete("github_token")

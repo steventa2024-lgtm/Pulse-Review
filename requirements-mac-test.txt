@@ -1,0 +1,3 @@
+-r requirements-mac.txt
+# Build/test only; PyInstaller explicitly excludes this and its browser payload.
+playwright==1.64.0

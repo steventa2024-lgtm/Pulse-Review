@@ -20,8 +20,8 @@ def bundle_dir() -> Path:
 def data_dir() -> Path:
     """%APPDATA%\\ZeroPulse\\PRReviewAgent on Windows.
 
-    ``ZEROPULSE_DATA_DIR`` overrides (used by tests and dev). On non-Windows hosts we use
-    the XDG data directory so the code stays runnable for development.
+    macOS uses ~/Library/Application Support/ZeroPulse/PulseReview.
+    ``ZEROPULSE_DATA_DIR`` overrides data paths (never the credential backend).
     """
     override = os.environ.get("ZEROPULSE_DATA_DIR")
     if override:
@@ -29,6 +29,8 @@ def data_dir() -> Path:
     elif sys.platform == "win32":
         appdata = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
         base = Path(appdata) / "ZeroPulse" / "PRReviewAgent"
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support" / "ZeroPulse" / "PulseReview"
     else:
         xdg = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
         base = Path(xdg) / "ZeroPulse" / "PRReviewAgent"

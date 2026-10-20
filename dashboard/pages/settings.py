@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+import sys
 from pathlib import Path
 
 from dashboard.components.external import open_external
@@ -227,7 +228,8 @@ def ai_panel(ctx: Ctx, save) -> None:
 
     # ---------------------------------------------------------------- OpenRouter
     with card("OpenRouter", "Only models that OpenRouter currently lists at $0 are offered — paid models are never used."):
-        with setting("API key", "Free account at openrouter.ai → Keys. Stored encrypted for your Windows user."):
+        with setting("API key", "Free account at openrouter.ai → Keys. " +
+                     ("Stored in macOS Keychain." if sys.platform == "darwin" else "Stored encrypted for your Windows user.")):
             key_state = ui.label().classes("zp-small")
             with ui.row().classes("items-center gap-2 no-wrap w-full"):
                 key_in = text_input("sk-or-v1-…", password=True, classes="w-96")
