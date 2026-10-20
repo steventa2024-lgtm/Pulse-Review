@@ -1,35 +1,41 @@
-# Website download handoff — zeropulsedev.com
+# PulseReview website downloads — release handoff
 
-No changes have been made to zeropulsedev.com. Access and explicit deployment
-approval are required before editing it.
+This document covers the **PulseReview product website** in `website/`. It is separate from the ZeroPulse corporate site at `zeropulsedev.com`; no corporate-site edits are implied.
 
-Current real Windows download (unchanged):
-https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/v0.1.2beta/PulseReview.exe
+## Published releases
 
-Current real Windows checksum:
-https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/v0.1.2beta/PulseReview.exe.sha256
+**Windows v0.1.2beta (unchanged)**
 
-There is no published Mac release yet. Do not add a live Mac download link until
-the owner approves publication and the assets are verified. Planned first tag:
-macos-v0.1.3-beta.1, built from the exact tested application commit.
+- EXE: https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/v0.1.2beta/PulseReview.exe
+- Checksum: https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/v0.1.2beta/PulseReview.exe.sha256
 
-Planned first Mac URL — inactive until the approved release is published:
-https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/macos-v0.1.3-beta.1/PulseReview-macOS-arm64.dmg
+**macOS Apple Silicon v0.1.3 Beta 1 — public prerelease**
 
-Planned first Mac checksum — also inactive:
-https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/macos-v0.1.3-beta.1/PulseReview-macOS-arm64.dmg.sha256
+- Release: https://github.com/steventa2024-lgtm/Pulse-Review/releases/tag/macos-v0.1.3-beta.1
+- DMG: https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/macos-v0.1.3-beta.1/PulseReview-macOS-arm64.dmg
+- Checksum: https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/macos-v0.1.3-beta.1/PulseReview-macOS-arm64.dmg.sha256
+- Source commit: `68726a73d19f2b76a84193c49efa30b74c6d1e0f`
+- DMG SHA-256: `94cec8c38b375f77c053acf5202c5d46b7ee3e6aa493b15b16b954dcbcef45aa`
 
-Reuse website/src/hooks/releaseSelection.ts for independent per-OS selection.
-It requires the exact file name, checksum asset, GitHub SHA-256 digest, published
-Mac tag and maintainer verification/source-commit lines. Never use /releases/latest
-for both platforms: a Mac-only prerelease and the Windows release have independent
-versions. An API error must retain the known Windows URL and leave Mac unavailable.
+The Mac release has the `PulseReview-Verified: macos-arm64` and `Source-Commit` release-notes markers, an asset checksum and a GitHub digest. The first approved Mac beta is now published; **the former “Mac coming soon” state is obsolete**.
 
-The verification marker records a maintainer's acceptance; the website does not
-cryptographically validate the full DMG during page load. Users can verify the
-published checksum. Do not add the marker until the app and installer passed
-acceptance and the owner approved the release.
+## Website integration
 
-Review branches explicitly disable Vercel automatic deployments. Do not merge
-the website PR into main until deployment is approved: the existing main branch
-integration may deploy immediately on merge.
+The `Hero` and `Download` sections provide separate **Download for Windows** and **Download for macOS** controls.
+
+`website/src/hooks/releaseSelection.ts` selects each platform independently and requires:
+- A published release, not a draft.
+- The exact platform asset name and checksum asset.
+- For Mac, `macos-vX.Y.Z-beta.N` tag, GitHub SHA-256 digest and verification/source-commit markers.
+
+Never use `/releases/latest` as a shared download link; the operating systems have different release tags. During a GitHub API outage, Windows retains its verified fallback, while the Mac control conservatively remains unavailable until release metadata can be checked. The presence of markers is a maintainer attestation, **not** a browser-side cryptographic verification of downloaded bytes.
+
+Installation, Gatekeeper warnings and beta testing limits are documented in the root README, `docs/MACOS_INSTALL.md`, and the GitHub release.
+
+## Deployment and scope
+
+The review branches intentionally disable preview deployments. Merge the website changes into `main` only when approved for PulseReview website deployment. The existing Vercel integration may automatically deploy `main`, so validate the live website afterwards.
+
+Do not merge the separate macOS application PR #2 merely to publish the website. Application branch history diverges from the website's `main` history and must be reconciled separately.
+
+No changes to the corporate `zeropulsedev.com` website are included.
