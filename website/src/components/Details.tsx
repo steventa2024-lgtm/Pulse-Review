@@ -3,12 +3,13 @@ import { DEVELOPER, PRODUCT, REPO, REPO_URL } from '../config'
 import { prettyVersion, type ReleaseInfo } from '../hooks/useRelease'
 import { Section } from './ui'
 
-export function Details({ release }: { release: ReleaseInfo }) {
+export function Details({ release, macos }: { release: ReleaseInfo; macos: ReleaseInfo | null }) {
   const date = release.publishedAt ? new Date(release.publishedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : null
   const rows: [string, React.ReactNode][] = [
     ['Product', PRODUCT],
     ['Developer', DEVELOPER],
-    ['Current release', <>{prettyVersion(release.tag)}{release.prerelease && <span className="ml-2 rounded-md border border-warn/50 px-2 py-0.5 text-xs font-semibold text-warn">pre-release</span>}</>],
+    ['Windows release', <>{prettyVersion(release.tag)}{release.prerelease && <span className="ml-2 rounded-md border border-warn/50 px-2 py-0.5 text-xs font-semibold text-warn">pre-release</span>}</>],
+    ['macOS release', macos ? <a href={macos.url} className="text-accent-2 hover:underline">{macos.tag} · Apple Silicon · macOS 14+</a> : 'Apple Silicon beta in preparation'],
     ['Released', date ?? 'See the releases page'],
     ['Download', release.sizeMB ? `PulseReview.exe · ${release.sizeMB} MB · single file` : 'PulseReview.exe · single file'],
     ['Operating system', 'Windows 10 / 11'],
@@ -19,7 +20,7 @@ export function Details({ release }: { release: ReleaseInfo }) {
     ['Release notes', <a href={release.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-accent-2 hover:underline">{release.tag} on GitHub<ExternalLink className="size-3.5" /></a>],
   ]
   return (
-    <Section id="details" eyebrow="Product details" title="Built for Windows by ZeroPulse.">
+    <Section id="details" eyebrow="Product details" title="Built for your desktop by ZeroPulse.">
       <div className="overflow-hidden rounded-2xl border border-line bg-surface/70">
         <dl className="divide-y divide-line">
           {rows.map(([k, v]) => (

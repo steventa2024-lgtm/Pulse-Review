@@ -5,8 +5,9 @@ import { shot } from '../screens'
 import { AppWindow } from './AppWindow'
 import { GitHubIcon, WindowsIcon } from './BrandIcons'
 import { Button } from './ui'
+import { MacDownload } from './MacDownload'
 
-export function Hero({ release, onZoom }: { release: ReleaseInfo; onZoom: (file: string) => void }) {
+export function Hero({ release, macos, onZoom }: { release: ReleaseInfo; macos: ReleaseInfo | null; onZoom: (file: string) => void }) {
   return (
     <section id="top" className="relative px-5 sm:px-8 pt-14 sm:pt-20 pb-10">
       <div className="mx-auto max-w-6xl text-center">
@@ -24,11 +25,12 @@ export function Hero({ release, onZoom }: { release: ReleaseInfo; onZoom: (file:
         </p>
         <div className="enter mt-9 flex flex-col sm:flex-row items-center justify-center gap-3" style={{ animationDelay: '.32s' }}>
           <Button href={release.downloadUrl} className="w-full sm:w-auto h-12 px-6"><WindowsIcon /> Download for Windows</Button>
+          <MacDownload release={macos} />
           <Button href={REPO_URL} variant="secondary" external className="w-full sm:w-auto h-12 px-6"><GitHubIcon /> View on GitHub</Button>
         </div>
         <ul className="enter mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-muted" style={{ animationDelay: '.42s' }}>
           <li className="flex items-center gap-2"><Code2 className="size-4 text-accent-2" />Free beta</li>
-          <li className="flex items-center gap-2"><Monitor className="size-4 text-accent-2" />Windows desktop</li>
+          <li className="flex items-center gap-2"><Monitor className="size-4 text-accent-2" />{macos ? 'Windows & Apple Silicon macOS' : 'Windows desktop · macOS beta in preparation'}</li>
           <li className="flex items-center gap-2"><Bot className="size-4 text-accent-2" />AI-powered reviews</li>
           <li className="flex items-center gap-2"><GitPullRequest className="size-4 text-accent-2" />GitHub integration</li>
         </ul>

@@ -13,7 +13,7 @@ import { Showcase } from './components/Showcase'
 import { useRelease } from './hooks/useRelease'
 
 export default function App() {
-  const release = useRelease()
+  const { windows: release, macos } = useRelease()
   const [zoom, setZoom] = useState<string | null>(null)
   const close = useCallback(() => setZoom(null), [])
   return (
@@ -21,14 +21,14 @@ export default function App() {
       <a href="#features" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2">Skip to content</a>
       <Nav downloadUrl={release.downloadUrl} />
       <main>
-        <Hero release={release} onZoom={setZoom} />
+        <Hero release={release} macos={macos} onZoom={setZoom} />
         <Features />
         <HowItWorks />
         <Showcase onZoom={setZoom} />
         <Models />
-        <Details release={release} />
+        <Details release={release} macos={macos} />
         <Faq />
-        <Download release={release} />
+        <Download release={release} macos={macos} />
       </main>
       <Footer downloadUrl={release.downloadUrl} />
       <Lightbox file={zoom} onClose={close} />

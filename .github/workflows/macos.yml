@@ -1,0 +1,76 @@
+name: macOS Apple Silicon candidate (no publishing)
+
+on:
+  pull_request:
+    branches: [claude/ecstatic-ramanujan-qz4m34]
+    paths-ignore: ["website/**"]
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact 40-character application source commit (not main's website commit)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || inputs.source_sha }}
+      PULSEREVIEW_MAC_VERSION: 0.1.3
+    steps:
+      - name: Require immutable source and Apple Silicon
+        shell: bash
+        run: |
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$(uname -m)" == arm64 ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+      - name: Check application source checkout
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -f main.py && test -f core/review_pipeline.py && test -f build_mac.sh
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          architecture: arm64
+      - name: Isolated unlocked CI Keychain (temporary dummy entries only)
+        shell: bash
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/PulseReview-ci.keychain-db"
+          security create-keychain -p ci-only-disposable "$KEYCHAIN"
+          security set-keychain-settings -lut 7200 "$KEYCHAIN"
+          security unlock-keychain -p ci-only-disposable "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" /Library/Keychains/System.keychain
+          security default-keychain -d user -s "$KEYCHAIN"
+      - name: Test, build app, test WKWebView, package and test DMG
+        run: bash build_mac.sh
+      - name: Upload candidate installers and provenance (not a GitHub Release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PulseReview-macOS-arm64-${{ env.SOURCE_SHA }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            dist/mac/PulseReview-macOS-arm64.dmg
+            dist/mac/PulseReview-macOS-arm64.dmg.sha256
+            dist/mac/build-info.json
+            dist/mac/dependencies.txt
+      - name: Upload verification reports even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS-verification-${{ env.SOURCE_SHA }}
+          if-no-files-found: warn
+          path: |
+            build/mac/*.json
+            build/mac/tests.xml
+            build/mac/dependencies.txt
+      - name: Remove disposable CI Keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/PulseReview-ci.keychain-db" || true
