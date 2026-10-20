@@ -3,8 +3,9 @@ import { prettyVersion, type ReleaseInfo } from '../hooks/useRelease'
 import { useReveal } from '../hooks/useReveal'
 import { GitHubIcon, WindowsIcon } from './BrandIcons'
 import { Button } from './ui'
+import { MacDownload } from './MacDownload'
 
-export function Download({ release }: { release: ReleaseInfo }) {
+export function Download({ release, macos }: { release: ReleaseInfo; macos: ReleaseInfo | null }) {
   const ref = useReveal<HTMLDivElement>()
   return (
     <section id="download" className="px-5 sm:px-8 py-20 sm:py-28">
@@ -16,11 +17,15 @@ export function Download({ release }: { release: ReleaseInfo }) {
         </p>
         <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Button href={release.downloadUrl} className="w-full sm:w-auto h-12 px-6"><WindowsIcon /> Download for Windows</Button>
+          <MacDownload release={macos} />
           <Button href={REPO_URL} variant="secondary" external className="w-full sm:w-auto h-12 px-6"><GitHubIcon /> View on GitHub</Button>
         </div>
         <p className="mt-5 text-sm text-muted">
           {prettyVersion(release.tag)}{release.sizeMB ? ` · ${release.sizeMB} MB` : ''} · Windows 10/11 (64-bit) ·{' '}
           <a className="text-accent-2 hover:underline" href={release.url} target="_blank" rel="noopener noreferrer">release notes & checksum</a>
+        </p>
+        <p className="mt-3 text-sm text-muted">
+          {macos ? <>{macos.tag} · Apple Silicon (M1–M4) · macOS 14+ · <a className="text-accent-2 hover:underline" href={macos.url}>Mac release notes & checksum</a> · Ad-hoc signed, not notarized; Gatekeeper may block first launch.</> : 'Apple Silicon macOS beta is in preparation. Downloads appear after verification and publication.'}
         </p>
       </div>
     </section>
