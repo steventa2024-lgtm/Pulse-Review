@@ -11,6 +11,10 @@
 
 Developed and licensed by **ZeroPulse** · Website: **https://pulse-review.vercel.app** · [License](LICENSE)
 
+Apple Silicon macOS beta: [installation and Gatekeeper guidance](docs/MACOS_INSTALL.md)
+· [build, audit and release process](docs/MACOS_ENGINEERING.md).
+Public Mac downloads will be enabled only after verification and owner approval.
+
 **[⬇ Download for Windows (v0.1.2 beta)](https://github.com/steventa2024-lgtm/Pulse-Review/releases/download/v0.1.2beta/PulseReview.exe)** ·
 [Releases](https://github.com/steventa2024-lgtm/Pulse-Review/releases) · Showcase website source: [`website/`](website/)
 

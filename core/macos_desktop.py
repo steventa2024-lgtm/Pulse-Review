@@ -100,9 +100,13 @@ def _native_smoke(window, url: str, report: str) -> None:
 def run_desktop(*, port: int, browser: bool = False, smoke_report: str | None = None) -> int:
     if smoke_report and not os.environ.get("ZEROPULSE_DATA_DIR"):
         raise RuntimeError("Native smoke testing requires a scratch ZEROPULSE_DATA_DIR")
+    if smoke_report:
+        Path(smoke_report + ".pid").write_text(str(os.getpid()), encoding="ascii")
     context = mp.get_context("spawn")
     stop = context.Event()
-    process = context.Process(target=_serve, args=(port, stop, os.getpid()), name="PulseReview-dashboard")
+    # ui.run intentionally returns without starting a server in processes named
+    # anything other than MainProcess. This dedicated server is its app process.
+    process = context.Process(target=_serve, args=(port, stop, os.getpid()), name="MainProcess")
     process.start()
     url = f"http://127.0.0.1:{port}"
     try:

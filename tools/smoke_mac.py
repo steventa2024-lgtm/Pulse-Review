@@ -29,13 +29,20 @@ def main(app: Path) -> None:
         env["ZEROPULSE_DATA_DIR"] = str(data)
         subprocess.run([str(exe), "--diagnostics"], env=env, cwd=scratch, check=True, timeout=90)
         diagnostics = json.loads((data / "diagnostics.json").read_text())
-        for attempt in (1, 2):
+        for attempt in (1, 2, 3):
             with socket.socket() as sock:
                 sock.bind(("127.0.0.1", 0))
                 port = sock.getsockname()[1]
             report = reports / f"native-smoke-{attempt}.json"
             report.unlink(missing_ok=True)
-            process = subprocess.Popen([str(exe), "--port", str(port), "--native-smoke-report", str(report)],
+            arguments = ["--port", str(port), "--native-smoke-report", str(report)]
+            command = [str(exe), *arguments]
+            if attempt == 3:
+                # Exercise Launch Services, as a Finder double click does.
+                command = ["/usr/bin/open", "-n", "-W", "--env", f"ZEROPULSE_DATA_DIR={data}",
+                           "--env", "GITHUB_TOKEN=", "--env", "OPENROUTER_API_KEY=",
+                           str(app.resolve()), "--args", *arguments]
+            process = subprocess.Popen(command,
                                        env=env, cwd=scratch, start_new_session=True)
             try:
                 code = process.wait(timeout=240)
@@ -51,6 +58,13 @@ def main(app: Path) -> None:
                     except subprocess.TimeoutExpired:
                         os.killpg(process.pid, signal.SIGKILL)
                         process.wait(timeout=5)
+                    if attempt == 3 and Path(str(report) + ".pid").is_file():
+                        # Launch Services owns the app process, not open's group.
+                        app_pid = int(Path(str(report) + ".pid").read_text())
+                        try:
+                            os.kill(app_pid, signal.SIGTERM)
+                        except ProcessLookupError:
+                            pass
             time.sleep(1)
             with socket.socket() as probe:
                 assert probe.connect_ex(("127.0.0.1", port)) != 0, "Dashboard server survived app close"
@@ -60,8 +74,8 @@ def main(app: Path) -> None:
             assert db.execute("SELECT count(*) FROM reviews WHERE status='completed'").fetchone()[0] == 1
             assert db.execute("SELECT count(*) FROM watched_repos").fetchone()[0] == 1
         (reports / "packaged-smoke.json").write_text(json.dumps({
-            **diagnostics, "native_launch_and_reopen": "passed twice",
-            "server_shutdown": "passed twice", "settings_across_launches": "passed",
+            **diagnostics, "native_launch_and_reopen": "passed three times, including Launch Services",
+            "server_shutdown": "passed three times", "settings_across_launches": "passed",
             "live_github_ollama_docker": "not tested; credentials/services not supplied",
         }, indent=2))
 

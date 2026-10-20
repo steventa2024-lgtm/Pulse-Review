@@ -41,9 +41,13 @@ def find_docker() -> str | None:
             if base and cand.is_file():
                 return str(cand)
     elif sys.platform == "darwin":
-        cand = Path("/Applications/Docker.app/Contents/Resources/bin/docker")
-        if cand.is_file():
-            return str(cand)
+        # Finder's PATH usually omits Homebrew and Docker's per-user CLI link.
+        for cand in (Path("/Applications/Docker.app/Contents/Resources/bin/docker"),
+                     Path.home() / "Applications/Docker.app/Contents/Resources/bin/docker",
+                     Path.home() / ".docker/bin/docker", Path("/opt/homebrew/bin/docker"),
+                     Path("/usr/local/bin/docker")):
+            if cand.is_file():
+                return str(cand)
     return None
 
 

@@ -94,3 +94,45 @@ def test_docker_mac_start_is_explicit_open(monkeypatch):
     monkeypatch.setattr(docker_setup.subprocess, "Popen", run)
     assert docker_setup.start_docker_desktop()
     run.assert_called_once_with(["/usr/bin/open", str(paths.Path("/Applications/Docker.app"))])
+
+
+@pytest.mark.parametrize("force_browser", [True, False])
+def test_browser_fallback_always_stops_managed_server(monkeypatch, force_browser):
+    from types import SimpleNamespace
+    from core import macos_desktop as desktop
+    context, process, stop = Mock(), Mock(), Mock()
+    context.Process.return_value, context.Event.return_value = process, stop
+    monkeypatch.setattr(desktop.mp, "get_context", lambda _: context)
+    monkeypatch.setattr(desktop, "wait_ready", Mock())
+    cleanup, browser = Mock(), Mock()
+    monkeypatch.setattr(desktop, "stop_server", cleanup)
+    monkeypatch.setattr(desktop, "browser_session", browser)
+    webview = SimpleNamespace(settings={}, create_window=Mock(), start=Mock(side_effect=RuntimeError("unavailable")))
+    monkeypatch.setitem(sys.modules, "webview", webview)
+    assert desktop.run_desktop(port=4321, browser=force_browser) == 0
+    browser.assert_called_once_with("http://127.0.0.1:4321")
+    cleanup.assert_called_once_with(process, stop)
+
+
+def test_managed_dashboard_process_serves_and_stops(monkeypatch):
+    import multiprocessing
+    import os
+    import socket
+    from core.macos_desktop import _serve
+    for key in list(os.environ):
+        if key.startswith("PYTEST_"):
+            monkeypatch.delenv(key)
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    context = multiprocessing.get_context("spawn")
+    stop = context.Event()
+    process = context.Process(target=_serve, args=(port, stop, os.getpid()), name="MainProcess")
+    process.start()
+    try:
+        wait_ready(process, f"http://127.0.0.1:{port}", timeout=30)
+    finally:
+        stop_server(process, stop)
+    assert process.exitcode == 0
+    with socket.socket() as probe:
+        assert probe.connect_ex(("127.0.0.1", port)) != 0
