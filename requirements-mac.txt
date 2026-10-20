@@ -1,0 +1,8 @@
+# Separate Mac dependency selection; Windows requirements/build remain unchanged.
+-r requirements.txt
+pywebview==6.2.1
+keyring==25.7.0
+pyobjc-framework-Cocoa>=10.3,<13
+pyobjc-framework-WebKit>=10.3,<13
+nicegui==3.18.0
+pyinstaller==6.22.3

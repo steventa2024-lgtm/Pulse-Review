@@ -1,7 +1,6 @@
 """Secret storage, redaction, prompt-injection framing, and safe filename handling."""
 from __future__ import annotations
 
-import base64
 import logging
 import os
 import re
@@ -297,22 +296,50 @@ class DpapiSecretStore(_BlobFileStore):
         return self._call("CryptUnprotectData", blob)
 
 
-class FileSecretStore(_BlobFileStore):
-    """Development-only fallback for non-Windows hosts: base64 in a 0600 file. NOT encryption."""
+class KeychainSecretStore(SecretStore):
+    """Use only the macOS Keychain backend; never select an installed fallback plugin.
 
-    backend = "file-0600 (development only)"
+    Tokens travel through Security.framework in-process, never command arguments or
+    files. Locked/denied Keychain access is an error, not permission to save elsewhere.
+    """
 
-    def _protect(self, raw: bytes) -> bytes:
-        return base64.b64encode(raw)
+    backend = "macos-keychain"
+    SERVICE = "com.zeropulse.PulseReview"
 
-    def _unprotect(self, blob: bytes) -> bytes:
-        return base64.b64decode(blob)
+    def __init__(self, keyring_backend=None) -> None:
+        if keyring_backend is None:
+            from keyring.backends.macOS import Keyring
+            keyring_backend = Keyring()
+        self._keyring = keyring_backend
+
+    def _call(self, operation: str, ref: str, *args):
+        try:
+            return getattr(self._keyring, operation)(self.SERVICE, ref, *args)
+        except Exception:
+            # Backend exceptions can contain sensitive details. Do not chain/log them.
+            raise RuntimeError("macOS Keychain access failed. Unlock your login keychain and allow "
+                               "PulseReview access, then try again. No credential was saved to a file.") from None
+
+    def set(self, ref: str, value: str) -> None:
+        self._call("set_password", ref, value)
+
+    def get(self, ref: str) -> str | None:
+        return self._call("get_password", ref)
+
+    def delete(self, ref: str) -> None:
+        # keyring raises PasswordDeleteError for missing entries. Avoid deleting
+        # absent items; all other failures must remain visible to the caller.
+        if self.get(ref) is not None:
+            self._call("delete_password", ref)
 
 
 def default_secret_store() -> SecretStore:
     if sys.platform == "win32":
         return DpapiSecretStore()
-    return FileSecretStore()
+    if sys.platform == "darwin":
+        return KeychainSecretStore()
+    log.warning("No secure persistent credential backend for this platform; credentials are session-only")
+    return MemorySecretStore()
 
 
 # ----------------------------------------------------------------------------------------

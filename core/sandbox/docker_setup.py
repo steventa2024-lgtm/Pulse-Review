@@ -1,4 +1,4 @@
-"""Help the user install / start Docker Desktop on Windows. Every action here is triggered by an explicit click."""
+"""Help install / start Docker Desktop. Actions require an explicit click."""
 from __future__ import annotations
 
 import os
@@ -13,6 +13,11 @@ _NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 
 def docker_desktop_exe() -> Path | None:
+    if sys.platform == "darwin":
+        for p in (Path("/Applications/Docker.app"), Path.home() / "Applications" / "Docker.app"):
+            if p.is_dir():
+                return p
+        return None
     if sys.platform != "win32":
         return None
     for base in (os.environ.get("ProgramFiles", r"C:\Program Files"), os.environ.get("ProgramW6432", "")):
@@ -55,5 +60,8 @@ def start_docker_desktop() -> bool:
     exe = docker_desktop_exe()
     if exe is None:
         return False
+    if sys.platform == "darwin":
+        subprocess.Popen(["/usr/bin/open", str(exe)])
+        return True
     subprocess.Popen([str(exe)], creationflags=_NO_WINDOW | 0x00000008)  # DETACHED_PROCESS
     return True

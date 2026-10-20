@@ -74,6 +74,10 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="PulseReview desktop app")
     ap.add_argument("--browser", action="store_true", help="run in the default browser instead of a native window")
     ap.add_argument("--port", type=int, default=0, help="local port (default: a free port on 127.0.0.1)")
+    if sys.platform == "darwin":
+        ap.add_argument("--no-show", action="store_true", help=argparse.SUPPRESS)
+        ap.add_argument("--diagnostics", action="store_true", help=argparse.SUPPRESS)
+        ap.add_argument("--native-smoke-report", help=argparse.SUPPRESS)
     # NiceGUI's native mode re-imports this module in a child process: do no heavy work there.
     if multiprocessing.current_process().name != "MainProcess":
         return 0
@@ -82,11 +86,20 @@ def main(argv: list[str] | None = None) -> int:
     _ensure_std_streams()
     from core.logging_setup import setup_logging
     setup_logging(console=not getattr(sys, "frozen", False))
-    native, reason = choose_mode(args.browser)
+    if sys.platform == "darwin":
+        if args.diagnostics:
+            from core.macos_diagnostics import run_diagnostics
+            return run_diagnostics()
+        if not args.no_show:
+            from core.macos_desktop import run_desktop
+            return run_desktop(port=args.port or _find_free_port(), browser=args.browser,
+                               smoke_report=args.native_smoke_report)
+    native, reason = choose_mode(args.browser or (sys.platform == "darwin" and args.no_show))
     if reason:
         _notify_fallback(reason)
     from dashboard.app import run_app
-    run_app(native=native, port=args.port or _find_free_port())
+    run_app(native=native, port=args.port or _find_free_port(),
+            **({"show": False} if sys.platform == "darwin" and args.no_show else {}))
     return 0
 
 
